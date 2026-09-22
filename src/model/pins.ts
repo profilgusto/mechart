@@ -1,0 +1,99 @@
+import type { Component, Library, Pin, Port } from './types'
+import type { ArchEdge, ArchNode } from './graph'
+import { arrangement, resolveEdge, nodeLabel } from './graph'
+
+/** Sinais que se ligam cruzados; todo o resto casa com o proprio nome. */
+const CRUZADOS: Record<string, string> = { tx: 'rx', rx: 'tx' }
+
+const parDe = (signal: string) => CRUZADOS[signal] ?? signal
+
+/**
+ * Os pinos que esta INSTANCIA expoe. Um pack em serie nao tem os mesmos
+ * condutores de uma celula solta: 3S acrescenta dois taps de balanceamento.
+ */
+export function pinsOf(node: ArchNode, component: Component, port: Port): Pin[] | null {
+  if (!port.pins) return null
+
+  const { series } = arrangement(node)
+  if (!component.instance.pack || series === 1 || port.kind !== 'power') return port.pins
+
+  const pos = port.pins.find((p) => p.signal === 'pos')
+  const neg = port.pins.find((p) => p.signal === 'neg')
+  if (!pos || !neg) return port.pins
+
+  // N celulas em serie expoem N-1 junções intermediarias para o balanceamento.
+  const taps: Pin[] = Array.from({ length: series - 1 }, (_, i) => ({
+    id: `B${i + 1}`,
+    signal: `tap${i + 1}`,
+    note: `junção entre a célula ${i + 1} e a ${i + 2}`,
+  }))
+
+  return [neg, ...taps, pos]
+}
+
+export type PinLink = {
+  id: string
+  sourcePin: Pin
+  targetPin: Pin
+}
+
+export type Expansion = {
+  links: PinLink[]
+  /** Pinos que ficaram sem par -- vale avisar, nao esconder. */
+  soltos: { lado: string; pin: Pin }[]
+  /** Por que nao deu para expandir, quando nao deu. */
+  reason?: string
+}
+
+/** Quebra uma ligacao porta-a-porta nos condutores que ela representa. */
+export function expandEdge(
+  lib: Library,
+  nodes: ArchNode[],
+  edge: ArchEdge,
+): Expansion {
+  const r = resolveEdge(lib, nodes, edge)
+  if (!r) return { links: [], soltos: [], reason: 'ligação não resolvida' }
+
+  const { from, to } = r
+  const ps = pinsOf(from.node, from.component, from.port)
+  const pt = pinsOf(to.node, to.component, to.port)
+
+  if (!ps || !pt) {
+    const quem = !ps
+      ? `${nodeLabel(from.node, from.component)}.${from.port.id}`
+      : `${nodeLabel(to.node, to.component)}.${to.port.id}`
+    return {
+      links: [],
+      soltos: [],
+      reason: `pinagem de ${quem} não está declarada em ports.json`,
+    }
+  }
+
+  const links: PinLink[] = []
+  const usadosDestino = new Set<string>()
+
+  for (const a of ps) {
+    const alvo = pt.find((b) => !usadosDestino.has(b.id) && b.signal === parDe(a.signal))
+    if (!alvo) continue
+    usadosDestino.add(alvo.id)
+    links.push({
+      id: `${edge.id}::${a.id}->${alvo.id}`,
+      sourcePin: a,
+      targetPin: alvo,
+    })
+  }
+
+  const ligadosOrigem = new Set(links.map((l) => l.sourcePin.id))
+  const soltos = [
+    ...ps.filter((p) => !ligadosOrigem.has(p.id)).map((pin) => ({
+      lado: nodeLabel(from.node, from.component),
+      pin,
+    })),
+    ...pt.filter((p) => !usadosDestino.has(p.id)).map((pin) => ({
+      lado: nodeLabel(to.node, to.component),
+      pin,
+    })),
+  ]
+
+  return { links, soltos }
+}
