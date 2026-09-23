@@ -31,6 +31,19 @@ function freeSpot(nodes: ArchNode[]): { x: number; y: number } {
   return { x: left + onRow.length * 190, y: bottom + 140 }
 }
 
+/** Desloca para o lado enquanto houver um bloco ocupando o ponto. */
+function nudgeClear(base: { x: number; y: number }, nodes: ArchNode[]): { x: number; y: number } {
+  let p = base
+  for (let i = 0; i < 60; i++) {
+    const taken = nodes.some(
+      (n) => Math.abs(n.position.x - p.x) < 150 && Math.abs(n.position.y - p.y) < 60,
+    )
+    if (!taken) break
+    p = { x: p.x + 200, y: p.y }
+  }
+  return p
+}
+
 export default function App() {
   const [library, setLibrary] = useState<Lib | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -58,6 +71,9 @@ export default function App() {
   const [flash, setFlash] = useState<{ tone: 'ok' | 'erro'; text: string } | null>(null)
 
   const loaded = useRef(false)
+
+  /** Preenchido pelo Canvas: devolve o centro da viewport em coordenadas do fluxo. */
+  const canvasCenter = useRef<(() => { x: number; y: number }) | null>(null)
 
   useEffect(() => {
     loadProject()
@@ -164,7 +180,7 @@ export default function App() {
         id: e.id,
         kind: isPower ? 'power' : 'data',
         title: isPower ? 'Energia' : (from.port.protocol ?? 'dados').toUpperCase(),
-        path: `${nodeLabel(from.node, from.component)}.${from.port.id} → ${nodeLabel(to.node, to.component)}.${to.port.id}`,
+        path: `${nodeLabel(from.node, from.component)}.${from.port.label ?? from.port.id} → ${nodeLabel(to.node, to.component)}.${to.port.label ?? to.port.id}`,
         detail,
         note: from.port.note ?? to.port.note,
       })
@@ -276,7 +292,9 @@ export default function App() {
           setLibSelection(id)
           setSelectedNodeIds([])
         }}
-        onAdd={(id) => addNode(id, freeSpot(nodes))}
+        onAdd={(id) =>
+          addNode(id, nudgeClear(canvasCenter.current?.() ?? freeSpot(nodes), nodes))
+        }
       />
 
       <main className="main">
@@ -343,6 +361,7 @@ export default function App() {
             onCancelConnect={cancelConnect}
             onStartDisconnect={startDisconnect}
             onPickTarget={pickTarget}
+            centerRef={canvasCenter}
           />
         </ReactFlowProvider>
 

@@ -164,7 +164,10 @@ export function possibleConnections(
           kind: ps.kind,
           protocol: ps.protocol,
           title: ps.kind === 'power' ? 'Energia' : (ps.protocol ?? 'dados').toUpperCase(),
-          path: `${nodeLabel(ns, cs)}.${ps.id} → ${nodeLabel(nt, ct)}.${pt.id}`,
+          // O label da porta, nao o id: no modal e preciso distinguir "USB-C
+          // (entrada de energia)" de "5V / GND (header GPIO)", nao "pwr" de
+          // "pwr-header". O fallback mantem o id quando nao ha label.
+          path: `${nodeLabel(ns, cs)}.${ps.label ?? ps.id} → ${nodeLabel(nt, ct)}.${pt.label ?? pt.id}`,
           detail: detalhes.join('  ·  '),
           note: ps.note ?? pt.note,
         })

@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ReactFlow,
   Background,
   Controls,
   MiniMap,
+  useReactFlow,
   type Edge,
   type NodeChange,
   MarkerType,
@@ -12,18 +13,63 @@ import {
 import '@xyflow/react/dist/style.css'
 import type { Component, Issue, Library } from '../model/types'
 import type { ArchEdge, ArchNode } from '../model/graph'
-import { handleId, nodeLabel, packTotals } from '../model/graph'
-import { expandEdge } from '../model/pins'
+import { handleId, nodeLabel, packTotals, effectiveVoltage, resolveEdge } from '../model/graph'
+import { formatRangeCompact, rangeBounds } from '../data/normalize'
+import { expandEdge, uartInstancesOf } from '../model/pins'
 import ComponentNode, { type ComponentFlowNode } from './ComponentNode'
 import { PROTOCOL_COLOR } from './legend'
 
 const nodeTypes = { component: ComponentNode }
+
+/** Largura do bloco em styles.css (.node), para centrar o cursor ao soltar. */
+const NODE_W = 210
 
 /** "3S2P · 6 células" para um pack; null quando o bloco e uma peca unica. */
 function describePack(node: ArchNode, component: Component): string | null {
   const t = packTotals(node, component)
   if (!t || t.units === 1) return null
   return `${t.notation} · ${t.units} células`
+}
+
+/**
+ * A tensão que chega em cada porta de energia de ENTRADA (sink), vinda da saída
+ * do componente que a alimenta. É o espelho do selo de saída: mostra o que o
+ * destino recebe, calculado a partir do que a fonte aplica. Só entram portas
+ * puramente de entrada -- uma porta comum (BMS) recebe e entrega, e aí o valor
+ * seria ambíguo.
+ */
+function incomingVoltages(
+  library: Library,
+  nodes: ArchNode[],
+  edges: ArchEdge[],
+): Record<string, Record<string, { text: string; range: boolean; level: 'bad' | 'warn' | null }>> {
+  const out: Record<string, Record<string, { text: string; range: boolean; level: 'bad' | 'warn' | null }>> = {}
+  for (const e of edges) {
+    const r = resolveEdge(library, nodes, e)
+    if (!r) continue
+    const { from, to } = r
+    if (to.port.kind !== 'power' || to.port.dir !== 'sink') continue
+    if (from.port.kind !== 'power' || from.port.dir === 'sink') continue
+
+    const v = effectiveVoltage(from.node, from.port)
+    if (!v || v.unknown) continue
+    const src = rangeBounds(v)
+    if (!src) continue
+
+    // Mesma regra de validation/voltage.ts. So marca quando as duas faixas sao
+    // conhecidas: sem interseçao = erro (vermelho); a fonte poder sair da faixa
+    // que a entrada aceita = aviso (ambar). Desconhecida nunca vira alerta.
+    const d = effectiveVoltage(to.node, to.port)
+    const dst = d && !d.unknown ? rangeBounds(d) : null
+    const disjoint = Boolean(dst && (src.hi < dst.lo || src.lo > dst.hi))
+    const over = Boolean(dst && !disjoint && (src.lo < dst.lo || src.hi > dst.hi))
+    const level: 'bad' | 'warn' | null = disjoint ? 'bad' : over ? 'warn' : null
+
+    const byPort = (out[to.node.id] ??= {})
+    if (byPort[to.port.id]) continue // a primeira fonte que alimenta manda
+    byPort[to.port.id] = { text: formatRangeCompact(v, 'V'), range: src.lo !== src.hi, level }
+  }
+  return out
 }
 
 export default function Canvas({
@@ -42,6 +88,7 @@ export default function Canvas({
   onCancelConnect,
   onStartDisconnect,
   onPickTarget,
+  centerRef,
 }: {
   library: Library
   nodes: ArchNode[]
@@ -56,6 +103,8 @@ export default function Canvas({
   onNodesChange: (next: ArchNode[]) => void
   onSelectionChange: (nodeIds: string[]) => void
   onDrop: (componentId: string, position: { x: number; y: number }) => void
+  /** O App registra aqui como pedir a posicao no centro da viewport. */
+  centerRef: { current: (() => { x: number; y: number }) | null }
   onDeleteEdges: (ids: string[]) => void
   onStartConnect: (nodeId: string) => void
   onCancelConnect: () => void
@@ -63,9 +112,30 @@ export default function Canvas({
   onPickTarget: (targetId: string) => void
 }) {
   const wrapper = useRef<HTMLDivElement>(null)
+  const { screenToFlowPosition } = useReactFlow()
   
   // Estado interno do ReactFlow para posições durante drag
   const [internalNodes, setInternalNodes] = useState<ComponentFlowNode[]>([])
+
+  /**
+   * O botao "+" da biblioteca nao sabe onde o usuario esta olhando: sem isso o
+   * bloco nasce fora da tela. Registra como converter o centro da viewport para
+   * coordenadas do fluxo (a diferenca de escala e pan do React Flow).
+   */
+  useEffect(() => {
+    centerRef.current = () => {
+      const rect = wrapper.current?.getBoundingClientRect()
+      if (!rect) return { x: 0, y: 0 }
+      const p = screenToFlowPosition({
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      })
+      return { x: p.x - NODE_W / 2, y: p.y - 40 }
+    }
+    return () => {
+      centerRef.current = null
+    }
+  }, [screenToFlowPosition, centerRef])
 
   // Pior nivel de problema por no e por aresta, para colorir o canvas.
   const worst = useMemo(() => {
@@ -86,9 +156,18 @@ export default function Canvas({
   useMemo(() => {
     const ids = new Set(selectedNodeIds)
     const multi = selectedNodeIds.length > 1
+    const incoming = incomingVoltages(library, nodes, edges)
     const newNodes = nodes.flatMap((n) => {
       const component = library.byId[n.componentId]
       if (!component) return []
+      const uartInstances: Record<string, ReturnType<typeof uartInstancesOf>> = {}
+      if (expanded) {
+        for (const p of component.ports) {
+          if (p.protocol !== 'uart') continue
+          const inst = uartInstancesOf(library, nodes, edges, n, p)
+          if (inst) uartInstances[p.id] = inst
+        }
+      }
       return [
         {
           id: n.id,
@@ -103,6 +182,8 @@ export default function Canvas({
             connected: edges.flatMap((e) =>
               e.source === n.id ? [e.sourcePort] : e.target === n.id ? [e.targetPort] : [],
             ),
+            incoming: incoming[n.id] ?? {},
+            uartInstances,
             expanded,
             node: n,
             connecting: connectFrom !== null,
@@ -147,16 +228,44 @@ export default function Canvas({
         if (expanded) {
           const { links } = expandEdge(library, nodes, e)
           if (links.length > 0) {
-            // Uma linha por condutor, cada uma chegando no seu pino.
-            return links.map((l) => ({
-              ...base,
-              id: l.id,
-              sourceHandle: handleId('out', e.sourcePort, l.sourcePin.id),
-              targetHandle: handleId('in', e.targetPort, l.targetPin.id),
-              // Sem rotulo: as duas pontas ja nomeiam o pino e o sinal, e com
-              // varios condutores paralelos os rotulos so se atropelam.
-              style: { stroke: color, strokeWidth: 1.4, strokeDasharray: isPower ? undefined : '6 4' },
-            }))
+            const tgtComp = library.byId[nodes.find((n) => n.id === e.target)?.componentId ?? '']
+            const targetPort = tgtComp?.ports.find((p) => p.id === e.targetPort)
+            const srcNode = nodes.find((n) => n.id === e.source)
+            const tgtNode = nodes.find((n) => n.id === e.target)
+            // So preenche quando esta porta tem 2+ ligacoes simultaneas -- e so
+            // aí que o card abre uma linha por instância (ver ComponentNode).
+            const srcMulti =
+              srcNode && port ? uartInstancesOf(library, nodes, edges, srcNode, port) : null
+            const tgtMulti =
+              tgtNode && targetPort ? uartInstancesOf(library, nodes, edges, tgtNode, targetPort) : null
+
+            // Uma linha por condutor, cada uma chegando no seu pino. tx sempre
+            // manda e rx sempre recebe: expandEdge as vezes pareia com os papeis
+            // trocados (a origem da aresta fica com o pino rx), entao a seta
+            // desta sub-linha segue o pino tx, nao necessariamente e.source.
+            return links.map((l) => {
+              const reversed = l.sourcePin.signal === 'rx' && l.targetPin.signal === 'tx'
+              const fromNode = reversed ? e.target : e.source
+              const toNode = reversed ? e.source : e.target
+              const fromPort = reversed ? e.targetPort : e.sourcePort
+              const toPort = reversed ? e.sourcePort : e.targetPort
+              const fromPin = reversed ? l.targetPin : l.sourcePin
+              const toPin = reversed ? l.sourcePin : l.targetPin
+              const fromMulti = reversed ? tgtMulti : srcMulti
+              const toMulti = reversed ? srcMulti : tgtMulti
+
+              return {
+                ...base,
+                id: l.id,
+                source: fromNode,
+                target: toNode,
+                sourceHandle: handleId('out', fromPort, fromMulti ? `${e.id}|${fromPin.id}` : fromPin.id),
+                targetHandle: handleId('in', toPort, toMulti ? `${e.id}|${toPin.id}` : toPin.id),
+                // Sem rotulo: as duas pontas ja nomeiam o pino e o sinal, e com
+                // varios condutores paralelos os rotulos so se atropelam.
+                style: { stroke: color, strokeWidth: 1.4, strokeDasharray: isPower ? undefined : '6 4' },
+              }
+            })
           }
           // Sem pinagem publicada, a ligacao continua sendo uma linha so.
         }
@@ -246,11 +355,9 @@ export default function Canvas({
           e.preventDefault()
           const componentId = e.dataTransfer.getData('application/karu-component')
           if (!componentId) return
-          const rect = wrapper.current?.getBoundingClientRect()
-          onDrop(componentId, {
-            x: e.clientX - (rect?.left ?? 0) - 70,
-            y: e.clientY - (rect?.top ?? 0) - 25,
-          })
+          // clientX/Y sao coordenadas de tela; o fluxo tem pan e zoom proprios.
+          const p = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+          onDrop(componentId, { x: p.x - NODE_W / 2, y: p.y - 40 })
         }}
         fitView
         proOptions={{ hideAttribution: false }}

@@ -4,7 +4,7 @@ import { CATEGORY_COLOR, CATEGORY_LABEL } from '../data/normalize'
 import { formatType, getTypeHierarchy } from '../model/component-type'
 import TypeFilter from './TypeFilter'
 
-const ORDER: Category[] = ['power', 'compute', 'sensor', 'actuation', 'outro']
+const ORDER: Category[] = ['external', 'power', 'compute', 'sensor', 'actuation', 'outro']
 
 export default function Library({
   components,

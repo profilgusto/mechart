@@ -173,7 +173,7 @@ function PortRow({ port }: { port: Port }) {
         <span className="port__name">{port.label ?? port.id}</span>
         <span className="port__dir">
           {ROLE_LABEL[papel]}
-          {port.required ? ' · obrigatória' : ''}
+          {port.required ? (port.exclusiveWith?.length ? ' · obrigatória (alternativa)' : ' · obrigatória') : ''}
         </span>
       </div>
       <div className={`port__spec${uncertain ? ' port__spec--uncertain' : ''}`}>
@@ -224,7 +224,9 @@ function NodeConfig({
   component: Component
   onChange: (patch: Partial<ArchNode>) => void
 }) {
-  const { pack, adjustable } = component.instance
+  const { pack, adjustable, selectableOutput } = component.instance
+  const defineSaida = Boolean(adjustable || selectableOutput)
+  const external = component.external
 
   const arranjo = (campo: 'series' | 'parallel', rotulo: string, dica: string) => (
     <div className="spec__row">
@@ -263,6 +265,51 @@ function NodeConfig({
         />
       </div>
 
+      {external ? (
+        <>
+          <div className="spec__row">
+            <label className="spec__key" htmlFor="cfg-v">
+              Tensão da fonte (V)
+            </label>
+            <input
+              id="cfg-v"
+              className="cfg__input cfg__input--num"
+              type="number"
+              step="0.1"
+              min={0}
+              placeholder="não declarada"
+              value={node.setVoltage ?? ''}
+              onChange={(e) => {
+                const v = e.target.value
+                onChange({ setVoltage: v === '' ? undefined : Number(v) })
+              }}
+            />
+          </div>
+          <div className="spec__row">
+            <label className="spec__key" htmlFor="cfg-i">
+              Corrente da fonte (mA)
+            </label>
+            <input
+              id="cfg-i"
+              className="cfg__input cfg__input--num"
+              type="number"
+              min={0}
+              placeholder="não declarada"
+              value={node.setCurrent ?? ''}
+              onChange={(e) => {
+                const v = e.target.value
+                onChange({ setCurrent: v === '' ? undefined : Number(v) })
+              }}
+            />
+          </div>
+          <div className="spec__note">
+            Esta alimentação vem de fora do projeto — os valores são do adapter que
+            você vai ligar, não de um datasheet. Sem eles, a tensão e a corrente
+            ficam “a confirmar” e a validação não pode fechar.
+          </div>
+        </>
+      ) : null}
+
       {pack ? (
         <>
           {arranjo('series', 'Em série (S)', 'multiplica a tensão')}
@@ -271,10 +318,10 @@ function NodeConfig({
         </>
       ) : null}
 
-      {adjustable ? (
+      {defineSaida ? (
         <div className="spec__row">
           <label className="spec__key" htmlFor="cfg-v">
-            Saída ajustada (V)
+            {adjustable ? 'Saída ajustada (V)' : 'Saída escolhida (V)'}
           </label>
           <input
             id="cfg-v"
@@ -282,7 +329,7 @@ function NodeConfig({
             type="number"
             step="0.1"
             min={0}
-            placeholder="não ajustada"
+            placeholder={adjustable ? 'não ajustada' : 'não escolhida'}
             value={node.setVoltage ?? ''}
             onChange={(e) => {
               const v = e.target.value
@@ -290,8 +337,9 @@ function NodeConfig({
             }}
           />
           <div className="spec__note">
-            O MP1584EN sai de fábrica num ajuste arbitrário. Declare aqui a tensão em que o
-            trimmer foi regulado para que as cargas sejam verificadas contra ela.
+            {adjustable
+              ? 'O MP1584EN sai de fábrica num ajuste arbitrário. Declare aqui a tensão em que o trimmer foi regulado para que as cargas sejam verificadas contra ela.'
+              : 'Saída fixa, escolhida na compra (3,3 / 4,2 / 5 / 6 / 9 / 10 / 12 V). Declare a versão para que as cargas sejam verificadas contra ela.'}
           </div>
         </div>
       ) : null}
@@ -325,6 +373,14 @@ export default function Inspector({
       <h1 style={{ color: CATEGORY_COLOR[component.category] }}>{component.id}</h1>
       <p className="subtitle">{String(description ?? '')}</p>
       <p className="subtitle">{CATEGORY_LABEL[component.category]}</p>
+
+      {component.external ? (
+        <div className="banner">
+          Fronteira do projeto: esta alimentação vem de fora do robô e não entra no
+          BOM. Declare a tensão e a corrente no inspetor da instância para que as
+          cargas sejam verificadas.
+        </div>
+      ) : null}
 
       {node && onNodeChange ? (
         <NodeConfig node={node} component={component} onChange={onNodeChange} />

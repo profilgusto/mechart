@@ -22,6 +22,12 @@ export type ArchNode = {
    * MP1584EN). Sem isso, a saida de 0,8-20 V alerta contra qualquer carga.
    */
   setVoltage?: number
+  /**
+   * Corrente maxima que uma fonte externa entrega, declarada na montagem. A
+   * fonte de bancada nao tem datasheet no catalogo: o numero e do adapter que o
+   * usuario vai ligar, entao fica na instancia e nao no ports.json.
+   */
+  setCurrent?: number
 }
 
 export type ArchEdge = {
@@ -160,10 +166,53 @@ export function effectiveCurrent(
   port: Port,
   which: 'supply' | 'draw' | 'peak',
 ): number | null {
+  // Fonte externa: a corrente e do adapter ligado, declarada na instancia.
+  if (which === 'supply' && node.setCurrent != null) return node.setCurrent
+
   const raw =
     which === 'supply' ? port.supply_mA : which === 'peak' ? port.peak_mA : port.draw_mA
   if (raw == null) return null
   return Number((raw * arrangement(node).parallel).toFixed(4))
+}
+
+/**
+ * Grupos de portas obrigatorias ainda nao satisfeitas. Portas mutuamente
+ * exclusivas formam um grupo alternativo -- a entrada USB-C e os pinos 5 V do
+ * header de um SBC, por exemplo: basta UMA do grupo estar ligada. O grupo
+ * inteiro e devolvido para que a UI marque todas e a mensagem diga "A ou B".
+ * Um grupo de um elemento e a porta obrigatoria de sempre.
+ */
+export function missingRequired(component: Component, connected: Set<string>): Port[][] {
+  const grupos: Port[][] = []
+  const visitadas = new Set<string>()
+
+  for (const port of component.ports) {
+    if (!port.required || visitadas.has(port.id)) continue
+
+    // Fecha o grupo seguindo a exclusividade mutua, em qualquer sentido.
+    const ids = new Set<string>([port.id])
+    let mudou = true
+    while (mudou) {
+      mudou = false
+      for (const p of component.ports) {
+        if (ids.has(p.id)) continue
+        const ligado = [...ids].some((g) => {
+          const gp = component.ports.find((x) => x.id === g)
+          return Boolean(gp?.exclusiveWith?.includes(p.id) || p.exclusiveWith?.includes(g))
+        })
+        if (ligado) {
+          ids.add(p.id)
+          mudou = true
+        }
+      }
+    }
+    ids.forEach((id) => visitadas.add(id))
+
+    if ([...ids].some((id) => connected.has(id))) continue
+    grupos.push([...ids].map((id) => component.ports.find((p) => p.id === id)!).filter(Boolean))
+  }
+
+  return grupos
 }
 
 /** Totais do pack, quando o componente e uma unidade arranjavel. */

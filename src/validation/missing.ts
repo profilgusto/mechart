@@ -1,10 +1,11 @@
 import type { Issue, Library } from '../model/types'
 import type { ArchEdge, ArchNode } from '../model/graph'
-import { nodeLabel } from '../model/graph'
+import { nodeLabel, missingRequired } from '../model/graph'
 
 /**
  * Portas marcadas como obrigatorias e que ninguem ligou. E a resposta a
- * "o que ainda falta para isto funcionar".
+ * "o que ainda falta para isto funcionar". Portas mutuamente exclusivas contam
+ * como um grupo alternativo: uma entrada USB-C ou os pinos 5 V do header.
  */
 export function checkMissing(
   lib: Library,
@@ -23,12 +24,17 @@ export function checkMissing(
     const component = lib.byId[node.componentId]
     if (!component) continue
 
-    const faltando = component.ports.filter(
-      (p) => p.required && !usadas.has(`${node.id}\u0000${p.id}`),
+    const connected = new Set(
+      component.ports
+        .filter((p) => usadas.has(`${node.id}\u0000${p.id}`))
+        .map((p) => p.id),
     )
-    if (faltando.length === 0) continue
+    const grupos = missingRequired(component, connected)
+    if (grupos.length === 0) continue
 
-    const nomes = faltando.map((p) => p.label ?? p.id).join(', ')
+    const nomes = grupos
+      .map((g) => g.map((p) => p.label ?? p.id).join(' ou '))
+      .join(', ')
     issues.push({
       level: 'warning',
       rule: 'missing',

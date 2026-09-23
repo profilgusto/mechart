@@ -219,6 +219,33 @@ body {
 .node--warning { border-color: #c98a12; }
 .node--unverifiable { border-style: dashed; }
 
+/* Fronteira do projeto: alimentação de fora. Borda tracejada para ler como
+   limite, não como peça -- o selo "fora do projeto" diz o resto. */
+.node--external {
+  border-style: dashed;
+  border-width: 1.5px;
+  border-top-width: 3px;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--panel),
+    var(--panel) 9px,
+    color-mix(in srgb, var(--cat) 8%, transparent) 9px,
+    color-mix(in srgb, var(--cat) 8%, transparent) 18px
+  );
+}
+.node__external {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 0 6px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cat);
+  border: 1px dashed color-mix(in srgb, var(--cat) 60%, transparent);
+  border-radius: 999px;
+}
+
 .node__head { padding: 8px 10px 6px; text-align: center; }
 .node__title { font-weight: 600; font-size: 14px; line-height: 1.25; }
 .node__subtype {
@@ -297,6 +324,53 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+/* Etiqueta da tensão na saída: o trimmer do DC-DC ou a variante fixa. */
+.prow__volt {
+  flex: none;
+  font-size: 9px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  background: color-mix(in srgb, var(--role, var(--muted)) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--role, var(--muted)) 45%, transparent);
+  border-radius: 999px;
+  padding: 0 6px;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+/* Faixa de tensão (bateria, BMS): borda tracejada e gradiente no lugar do
+   preenchimento sólido do valor fixo -- lê-se como uma banda, não um número. */
+.prow__volt--range {
+  border-style: dashed;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--role, var(--muted)) 8%, transparent),
+    color-mix(in srgb, var(--role, var(--muted)) 34%, transparent)
+  );
+}
+
+/* Tensão aplicada que não cabe na faixa aceita: o selo de entrada fica vermelho,
+   o mesmo vermelho dos erros de validação. Depois do --range para vencê-lo
+   (mesma especificidade, ordem no arquivo decide). */
+.prow__volt--bad {
+  --role: #d14343;
+  color: #fff;
+  background: #d14343;
+  border-style: solid;
+  border-color: #d14343;
+}
+
+/* Sobreposição parcial: a fonte pode sair da faixa que a entrada aceita. Âmbar,
+   como os avisos da validação, e vem depois do --range para vencer a faixa. */
+.prow__volt--warn {
+  --role: #c98a12;
+  color: #2a1c00;
+  background: #e0a127;
+  border-style: solid;
+  border-color: #c98a12;
 }
 
 .node__more {
@@ -753,6 +827,36 @@ body {
   border-radius: 50%;
   background: var(--role, var(--muted));
 }
+
+/* Porta UART com 2+ ligações simultâneas: uma instância por pino físico. */
+.node__uart-instances {
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+}
+.uartinst + .uartinst {
+  border-top: 1px dashed color-mix(in srgb, var(--border) 70%, transparent);
+}
+.uartinst__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 3px 10px 1px 22px;
+  font-size: 8px;
+}
+.uartinst__label {
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+.uartinst__other {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.uartinst .pinrow:nth-child(odd) { background: color-mix(in srgb, var(--text) 3%, transparent); }
+.uartinst .pinrow:nth-child(even) { background: color-mix(in srgb, var(--text) 6%, transparent); }
 /* Type Filter Styles */
 
 .panel__header {

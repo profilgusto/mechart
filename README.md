@@ -56,7 +56,7 @@ de onde o valor saiu. Quando o dado não é publicado, a porta recebe `null` e u
 responde **"não verificável"**, nunca "ok". É a regra do projeto ("só entram
 valores confirmados") levada até o diagrama.
 
-Dois ajustes são declarados em `instance`:
+Ajustes são declarados em `instance`:
 
 - `pack` — o bloco representa unidades arranjáveis. O `components.json` descreve
   **uma** célula 18650; o pack real se descreve com *Em série (S)* e *Em paralelo
@@ -71,6 +71,20 @@ Dois ajustes são declarados em `instance`:
   nota do `components.json` manda adotar como figura de projeto.
 - `adjustable` — a saída é regulada na montagem (o trimmer do MP1584EN). Declare a
   tensão em *Saída ajustada* para que as cargas sejam verificadas contra ela.
+- `selectableOutput` — a saída é fixa, escolhida na compra entre variantes (o
+  NDUB22TA). Declare a versão em *Saída escolhida*.
+
+A tensão declarada aparece no próprio card, na linha da porta de saída (ex. o
+`out` do DC-DC com `5 V`), para se ler a tensão do trilho direto do diagrama.
+Saídas que são **faixa** — o `P+/P-` da BMS, a descarga do pack — ganham um selo
+com borda tracejada e gradiente, em vez do preenchimento sólido do valor fixo.
+
+Do outro lado, cada porta de **entrada** ligada mostra, logo ao lado do conector,
+a tensão que chega ali — calculada a partir da saída de quem a alimenta. O selo
+de entrada é o espelho do de saída: junta a tensão aplicada pela fonte com o que
+o destino recebe. O selo segue a mesma regra da validação de tensão: **vermelho**
+quando a faixa que chega não cruza a que a entrada aceita (erro), **âmbar** quando
+cruza mas pode sair dela (aviso).
 
 ## Lendo o diagrama
 
@@ -170,9 +184,9 @@ ESP32) e portas que só fazem sentido num ponto da topologia (o `only` do
 | Portas | Respeita quantas ligações cada porta aceita, e as portas mutuamente exclusivas (o pino R/T do sensor de CO2 escolhe UART **ou** I²C). |
 | Corrente | Soma o consumo pendurado em cada saída e compara com o que ela entrega. Carga sem consumo confirmado deixa a soma explicitamente incompleta. |
 | Topologia | Portas com `only` só aceitam os componentes declarados. O `B+/B-` do BMS é para as células: ligar o carregador ali passa por fora dos MOSFETs de proteção. |
-| Falta ligar | Portas `required` que ninguém ligou ainda — a resposta a "o que falta para isto funcionar". |
+| Falta ligar | Portas `required` que ninguém ligou ainda — a resposta a "o que falta para isto funcionar". Portas mutuamente exclusivas contam como **um grupo alternativo**: basta uma ligada (o Orange Pi aceita energia pelo USB-C **ou** pelos pinos 5 V do header). |
 | Condutores | Pinos de **energia** que ficaram sem par ao expandir a ligação. Pega o pack menor (ou maior) do que o BMS espera: um 1S numa placa 3S deixa `B1` e `B2` sem alimentar, e sem eles não há balanceamento. Pinos de dados soltos não entram — uma porta unidirecional deixa o TX do host sobrando o tempo todo, e isso é normal. |
 
 ## Fora de escopo
 
-Geometria e dimensões (vivem no CAD), roteamento físico de cabos, netlist KiCad.
+Geometria e dimen

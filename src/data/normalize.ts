@@ -75,6 +75,20 @@ export function formatRange(r: Range, unit?: string): string {
   return 'a confirmar'
 }
 
+/**
+ * Versao enxuta de `formatRange` para o selo de tensao no card: uma faixa vira
+ * so os dois limites ("7,5–12,6 V"), sem o nominal -- o card precisa deixar
+ * claro que e uma banda, nao um numero. O nominal continua no inspetor.
+ */
+export function formatRangeCompact(r: Range, unit?: string): string {
+  if (r.unknown) return 'a confirmar'
+  const u = unit ? ` ${unit}` : ''
+  if (r.min !== undefined && r.max !== undefined && r.min !== r.max) {
+    return `${n(r.min)}–${n(r.max)}${u}`
+  }
+  return formatRange(r, unit)
+}
+
 const CATEGORY_BY_ID: Record<string, Category> = {
   bms: 'power',
   'dc-dc-converter': 'power',
@@ -84,6 +98,7 @@ const CATEGORY_BY_ID: Record<string, Category> = {
   motor: 'actuation',
   esp32: 'compute',
   'orange-pi': 'compute',
+  'external-source': 'external',
 }
 
 /** O components.json nao tem campo de categoria; ela vem do prefixo do id. */
@@ -97,6 +112,7 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   power: 'Energia',
   compute: 'Computação',
   actuation: 'Atuação',
+  external: 'Fontes externas',
   outro: 'Outros',
 }
 
@@ -106,5 +122,6 @@ export const CATEGORY_COLOR: Record<Category, string> = {
   power: '#e0a127',
   compute: '#1f7a6a',
   actuation: '#b5562f',
+  external: '#5c6b73',
   outro: '#6b7280',
 }

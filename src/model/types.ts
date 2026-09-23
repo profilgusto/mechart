@@ -11,7 +11,7 @@ export type Range = {
   note?: string
 }
 
-export type Category = 'sensor' | 'power' | 'compute' | 'actuation' | 'outro'
+export type Category = 'sensor' | 'power' | 'compute' | 'actuation' | 'external' | 'outro'
 
 export type PortKind = 'power' | 'data'
 /** sink = consome energia; source = fornece. in/out/bidir para dados. */
@@ -67,6 +67,14 @@ export type Port = {
    * e nao se inventa pinagem: o que o datasheet nao publica fica de fora.
    */
   pins?: Pin[]
+  /**
+   * Nomes das instâncias físicas que esta porta representa, na mesma ordem em
+   * que as ligações forem feitas (ex. UART do orange-pi: ["UART0", "UART5", ...]).
+   * Só faz sentido em portas ponto-a-ponto (`count` > 1, ex. protocol "uart")
+   * onde cada ligação simultânea é um pino físico diferente -- ao contrário de
+   * um barramento (I²C/SPI), onde várias ligações dividem os mesmos fios.
+   */
+  instances?: string[]
   /** Caminho no components.json de onde o dado veio (rastreabilidade). */
   src?: string
   note?: string
@@ -92,11 +100,23 @@ export type InstanceSpec = {
   unit?: PackUnit
   /** Fonte cuja tensao de saida e regulada na montagem (o trimmer do MP1584EN). */
   adjustable?: boolean
+  /** Fonte cuja tensao de saida e fixa, escolhida na compra (o NDUB22TA). */
+  selectableOutput?: boolean
 }
 
 export type PortSpec = {
   category?: Category
   instance?: InstanceSpec
+  /**
+   * Fronteira do projeto: uma fonte que nao e peca do robo, mas alimenta o
+   * quadro de fora (o USB-C do charger ligado numa fonte de bancada). Nao vem
+   * do components.json -- e declarada direto no ports.json e nunca entra no BOM.
+   */
+  external?: boolean
+  /** Descricao do pseudo-componente externo (so quando `external`). */
+  description?: string
+  /** Tipo exibido no bloco externo (so quando `external`). */
+  type?: ComponentType
   ports: Port[]
 }
 
@@ -113,6 +133,8 @@ export type Component = {
   raw: Record<string, unknown>
   ports: Port[]
   instance: InstanceSpec
+  /** Fronteira do projeto: fonte externa, nao uma peca de catalogo. */
+  external: boolean
 }
 
 export type Library = {
