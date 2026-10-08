@@ -1,4 +1,4 @@
-# mecha-arch
+# mechart
 
 Editor visual da arquitetura de sistemas mecatrônicos: a biblioteca de componentes
 vira caixinhas, você monta o diagrama de blocos ligando as portas, e as ligações
@@ -6,49 +6,75 @@ são verificadas contra as restrições reais de alimentação e comunicação d
 
 O projeto nasceu para o robô karu-un, mas a aplicação é **auto-contida e genérica**:
 o catálogo (`data/library.json`) e as portas (`data/ports.json`) são apenas dados.
-O exemplo do karu-un vem embutido e é o projeto aberto por padrão.
+O mechart abre por padrão num **projeto novo em branco**; o exemplo do karu-un
+segue versionado em `data/diagram.json` como referência.
 
 ## Como rodar
 
 A aplicação é auto-contida — rode os comandos **a partir desta pasta**.
 
-Com Docker:
-
-```sh
-docker compose up        # http://localhost:5180 · Ctrl+C para parar
-docker compose up -d     # em segundo plano
-docker compose down      # para
-docker compose build     # reconstrói depois de mexer no package.json
-```
-
-Ou direto no Mac, se preferir:
+### Desenvolvimento
 
 ```sh
 npm install
-npm run dev              # http://localhost:5180
+npm run dev              # Vite em http://localhost:5180, com hot reload
+npm run typecheck        # tsc --noEmit
+npm run build            # gera o site estático em dist/
+npm run preview          # serve o dist/ localmente para conferir
 ```
 
-Os dois caminhos leem e escrevem os mesmos arquivos, então dá para alternar
-entre eles à vontade — só não rode os dois ao mesmo tempo, porque disputam a
-porta 5180.
+### Produção (site estático)
 
-> **Ao criar um arquivo `.ts` novo, reinicie o container** (`docker compose restart
-> mecha-arch`). O watcher do Vite sobre bind mount do macOS acompanha edições em
-> arquivos existentes, mas pode não notar arquivos criados depois que o servidor
-> subiu — e aí ele continua servindo a versão antiga em silêncio, sem erro nenhum.
+`npm run build` gera um site **100% estático** em `dist/`. Não há servidor de
+aplicação, endpoint de escrita nem banco de dados: os dados do catálogo entram no
+bundle em tempo de build e o projeto do usuário vive no navegador. Qualquer host
+estático serve a pasta — Netlify, GitHub Pages, S3/CloudFront, ou o nginx da
+imagem Docker.
+
+Com Docker, a imagem é **multi-stage**: o primeiro estágio roda o build, e o
+segundo entrega `dist/` por um nginx **não-root** (imagem `nginx-unprivileged`),
+com rootfs somente leitura, `no-new-privileges` e headers de segurança (CSP,
+HSTS, `X-Frame-Options`, etc.) já configurados em `nginx.conf`:
+
+```sh
+docker compose up -d     # http://localhost:5180
+docker compose down      # para
+docker compose build     # reconstrói depois de mexer no código
+```
+
+> **Para publicar na internet**, ponha um TLS na frente (Caddy/Let's Encrypt ou
+> um balanceador) e mantenha a porta do container restrita. O app é estático, mas
+> o `Strict-Transport-Security` do nginx só faz efeito sobre HTTPS.
+
+Não rode o Docker e o `npm run dev` ao mesmo tempo: ambos usam a porta 5180.
 
 ## Onde ficam os dados
 
 Os dados vivem dentro da aplicação, em `data/`, e são versionados junto com o
-código. Nada de valor mora dentro do container; `docker compose down` não perde
-nada. O `library.json` é lido pelo app mas nunca escrito por ele — nem um bug
-consegue alterá-lo.
+código. No build eles são **embutidos no bundle** via `?raw` (ver
+`src/data/load.ts`): o catálogo, as portas e o glossário de unidades viram parte
+do JavaScript gerado, sem nenhuma requisição de rede. O `library.json` é lido pelo
+app mas nunca escrito por ele — nem um bug consegue alterá-lo.
 
 | Arquivo | Papel |
 |---|---|
-| `data/library.json` | Catálogo de componentes. **Lido, nunca escrito** pelo app. |
-| `data/ports.json` | Portas de cada componente (energia e dados), escritas à mão. |
-| `data/diagram.json` | O diagrama. Salvo automaticamente enquanto você edita. |
+| `data/library.json` | Catálogo de componentes. Embutido no build. **Lido, nunca escrito** pelo app. |
+| `data/ports.json` | Portas de cada componente (energia e dados), escritas à mão. Embutido no build. |
+| `data/diagram.json` | Exemplo curado do karu-un (referência). Não é carregado automaticamente. |
+
+O projeto **aberto no editor não vai para o servidor** — não existe servidor. Ele
+é espelhado no **`localStorage` do navegador** (chave `mechart:project`), a cada
+salvamento (com debounce). Ao abrir o mechart de novo, o app reabre essa cópia —
+é o "onde você parou". Sem nada guardado no navegador, ele começa num **projeto
+novo em branco**. "Novo projeto" e "Carregar projeto" (menu *Arquivo*) substituem
+essa cópia; "Baixar projeto" é o que leva o projeto para fora do navegador, e
+"Carregar projeto…" o traz de volta.
+
+O projeto tem um **nome** (campo `name`), mostrado ao lado do menu *Arquivo* e
+renomeável pelo lápis que aparece no hover. Ele viaja no JSON salvo e baixado; sem
+o campo, vale "Novo Projeto". **Baixar projeto** grava o arquivo como
+`mechart_<slug>_<YYYY-MM-DD_HH-MM>.json` — o nome em caixa-baixa, sem acento nem
+caractere especial, espaços virando `-`, seguido do instante do download.
 
 O `library.json` não é JSON válido — tem comentários `//` e dois objetos de topo
 concatenados (componentes e, depois de `// units`, o glossário de unidades).

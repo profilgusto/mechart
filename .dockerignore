@@ -2,3 +2,12 @@ node_modules
 dist
 .vite
 *.log
+
+# nada disso precisa entrar no contexto de build
+.git
+.gitignore
+.DS_Store
+tsconfig.tsbuildinfo
+docker-compose.yml
+Dockerfile
+README.md

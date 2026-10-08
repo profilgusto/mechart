@@ -1,22 +1,31 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { ReactFlowProvider } from '@xyflow/react'
 import type { Library as Lib } from './model/types'
-import type { ArchEdge, ArchGraph, ArchNode } from './model/graph'
+import type { ArchEdge, ArchNode } from './model/graph'
 import { effectiveVoltage, nodeLabel, resolveEdge } from './model/graph'
 import { formatRange } from './data/normalize'
-import { loadProject, saveDiagram } from './data/load'
+import { loadProject } from './data/load'
+import {
+  DEFAULT_PROJECT_NAME,
+  parseProject,
+  projectFileName,
+  serializeProject,
+  writeStoredProject,
+  type ProjectFile,
+} from './data/project'
 import { validate } from './validation'
 import { possibleConnections, type Candidate } from './model/pairing'
 import ConnectionModal from './ui/ConnectionModal'
+import ConfirmModal from './ui/ConfirmModal'
 import DisconnectModal, { type DisconnectOption } from './ui/DisconnectModal'
+import ProjectMenu from './ui/ProjectMenu'
+import ProjectName from './ui/ProjectName'
 import LibraryPanel from './ui/Library'
 import Inspector from './ui/Inspector'
 import Canvas from './ui/Canvas'
 import IssuePanel from './ui/IssuePanel'
 import Legend from './ui/legend'
 import { useResizable, useStoredFlag } from './ui/useResizable'
-
-type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
 /** Altura fixa da legenda (ver .legend em styles.css) — a barra de problemas
  * flutua exatamente encostada nela, sem precisar medir nada em runtime. */
@@ -54,14 +63,15 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [nodes, setNodes] = useState<ArchNode[]>([])
   const [edges, setEdges] = useState<ArchEdge[]>([])
+  /** Nome do projeto, editavel na barra e usado no arquivo baixado. */
+  const [projectName, setProjectName] = useState(DEFAULT_PROJECT_NAME)
   /** Blocos selecionados. Com Shift, o React Flow acrescenta mais de um. */
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
   const [libSelection, setLibSelection] = useState<string | null>(null)
-  const [save, setSave] = useState<SaveState>('idle')
   /** Preferencia de visualizacao, lembrada neste navegador. */
   const [expanded, setExpanded] = useState(() => {
     try {
-      return localStorage.getItem('mecha:expanded') === '1'
+      return localStorage.getItem('mechart:expanded') === '1'
     } catch {
       return false
     }
@@ -69,7 +79,7 @@ export default function App() {
   /** Preferencia de card: id como titulo em vez do tipo level-0. */
   const [idAsTitle, setIdAsTitle] = useState(() => {
     try {
-      return localStorage.getItem('mecha:idAsTitle') === '1'
+      return localStorage.getItem('mechart:idAsTitle') === '1'
     } catch {
       return false
     }
@@ -82,11 +92,16 @@ export default function App() {
   const [disconnecting, setDisconnecting] = useState<string | null>(null)
   /** Recado curto na barra: por que a ligacao nao deu, ou o que foi criado. */
   const [flash, setFlash] = useState<{ tone: 'ok' | 'erro'; text: string } | null>(null)
+  /** Acao que so roda depois que o usuario confirma descartar o projeto aberto. */
+  const [pending, setPending] = useState<
+    | { title: string; message: string; confirmLabel: string; run: () => void }
+    | null
+  >(null)
 
   /** Larguras/altura dos paineis, arrastaveis e lembradas neste navegador. */
-  const libWidth = useResizable({ storageKey: 'mecha:libWidth', initial: 260, min: 180, max: 480, axis: 'x' })
+  const libWidth = useResizable({ storageKey: 'mechart:libWidth', initial: 260, min: 180, max: 480, axis: 'x' })
   const inspWidth = useResizable({
-    storageKey: 'mecha:inspWidth',
+    storageKey: 'mechart:inspWidth',
     initial: 340,
     min: 260,
     max: 560,
@@ -94,7 +109,7 @@ export default function App() {
     sign: -1,
   })
   const issuesHeight = useResizable({
-    storageKey: 'mecha:issuesHeight',
+    storageKey: 'mechart:issuesHeight',
     initial: 200,
     min: 80,
     max: 480,
@@ -103,38 +118,54 @@ export default function App() {
   })
 
   /** Cada painel pode ser escondido, sobrando so o botao-aba na borda. */
-  const [libCollapsed, setLibCollapsed] = useStoredFlag('mecha:libCollapsed')
-  const [inspCollapsed, setInspCollapsed] = useStoredFlag('mecha:inspCollapsed')
-  const [issuesCollapsed, setIssuesCollapsed] = useStoredFlag('mecha:issuesCollapsed')
+  const [libCollapsed, setLibCollapsed] = useStoredFlag('mechart:libCollapsed')
+  const [inspCollapsed, setInspCollapsed] = useStoredFlag('mechart:inspCollapsed')
+  const [issuesCollapsed, setIssuesCollapsed] = useStoredFlag('mechart:issuesCollapsed')
 
   const loaded = useRef(false)
+  /** O app abriu no projeto em branco padrao, ainda sem nada do usuario. */
+  const pristineBlank = useRef(false)
 
   /** Preenchido pelo Canvas: devolve o centro da viewport em coordenadas do fluxo. */
   const canvasCenter = useRef<(() => { x: number; y: number }) | null>(null)
 
   useEffect(() => {
     loadProject()
-      .then(({ library, diagram }) => {
+      .then(({ library, project }) => {
         setLibrary(library)
-        const g = diagram as ArchGraph | null
-        if (g?.nodes) setNodes(g.nodes)
-        if (g?.edges) setEdges(g.edges)
+        if (project) {
+          setProjectName(project.name)
+          setNodes(project.nodes)
+          setEdges(project.edges)
+        }
+        // Sem copia local, o mechart nasce num projeto novo em branco.
+        pristineBlank.current = !project
         loaded.current = true
       })
       .catch((e: unknown) => setError(String(e)))
   }, [])
 
-  // Salva o diagrama em data/diagram.json, com debounce.
+  // Salva o projeto no navegador, com debounce. Num site estatico nao ha
+  // servidor: o localStorage e a unica persistencia automatica, e o download do
+  // JSON (menu Arquivo) e a forma de levar o projeto para fora do navegador.
+  // O projeto em branco padrao com que o mechart abre nao e gravado enquanto o
+  // usuario nao mexer, para nao sobrepor uma copia local valida so por abrir o
+  // app. Qualquer edicao (ou "Novo projeto") libera a gravacao.
   useEffect(() => {
     if (!loaded.current) return
-    setSave('saving')
+    const untouchedBlank =
+      nodes.length === 0 &&
+      edges.length === 0 &&
+      (!projectName || projectName === DEFAULT_PROJECT_NAME)
+    if (pristineBlank.current && untouchedBlank) return
+
     const t = setTimeout(() => {
-      saveDiagram({ nodes, edges })
-        .then(() => setSave('saved'))
-        .catch(() => setSave('error'))
+      const project: ProjectFile = { name: projectName, nodes, edges }
+      writeStoredProject(project)
+      pristineBlank.current = false
     }, 600)
     return () => clearTimeout(t)
-  }, [nodes, edges])
+  }, [projectName, nodes, edges])
 
   const cancelConnect = useCallback(() => {
     setConnectFrom(null)
@@ -177,7 +208,7 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('mecha:expanded', expanded ? '1' : '0')
+      localStorage.setItem('mechart:expanded', expanded ? '1' : '0')
     } catch {
       // modo privado: a preferencia simplesmente nao persiste
     }
@@ -185,7 +216,7 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('mecha:idAsTitle', idAsTitle ? '1' : '0')
+      localStorage.setItem('mechart:idAsTitle', idAsTitle ? '1' : '0')
     } catch {
       // modo privado: a preferencia simplesmente nao persiste
     }
@@ -316,6 +347,93 @@ export default function App() {
     [deleteEdges],
   )
 
+  /** Ha um projeto em edicao? Vazio = nada a descartar. */
+  const hasProject = nodes.length > 0 || edges.length > 0
+
+  /** Fecha qualquer interacao em curso e troca o projeto inteiro. */
+  const replaceGraph = useCallback((next: ProjectFile) => {
+    setProjectName(next.name)
+    setNodes(next.nodes)
+    setEdges(next.edges)
+    setSelectedNodeIds([])
+    setLibSelection(null)
+    setConnectFrom(null)
+    setChoices(null)
+    setDisconnecting(null)
+    // Acao explicita do usuario: o projeto (mesmo em branco) deve ser gravado.
+    pristineBlank.current = false
+    // Novo projeto e carregar substituem a copia local na hora, sem esperar o
+    // debounce: o fail-safe do navegador ja passa a valer o projeto recem-aberto.
+    writeStoredProject(next)
+  }, [])
+
+  const doNewProject = useCallback(() => {
+    replaceGraph({ name: DEFAULT_PROJECT_NAME, nodes: [], edges: [] })
+    setFlash({ tone: 'ok', text: 'Novo projeto em branco' })
+  }, [replaceGraph])
+
+  const doLoadProject = useCallback(
+    (project: ProjectFile) => {
+      replaceGraph(project)
+      setFlash({ tone: 'ok', text: `Projeto carregado: ${project.name}` })
+    },
+    [replaceGraph],
+  )
+
+  /** Novo projeto: so pergunta se ha algo aberto para descartar. */
+  const requestNewProject = useCallback(() => {
+    if (!hasProject) {
+      doNewProject()
+      return
+    }
+    setPending({
+      title: 'Novo projeto',
+      message: 'Há um projeto aberto. Descartar as alterações e começar um projeto em branco?',
+      confirmLabel: 'Descartar e criar',
+      run: doNewProject,
+    })
+  }, [hasProject, doNewProject])
+
+  /** Carregar projeto: le e valida o arquivo; confirma antes se ha projeto aberto. */
+  const requestLoadProject = useCallback(
+    (file: File) => {
+      file
+        .text()
+        .then((text) => {
+          const parsed = parseProject(text)
+          if (!parsed.ok) {
+            setFlash({ tone: 'erro', text: parsed.error })
+            return
+          }
+          if (!hasProject) {
+            doLoadProject(parsed.project)
+            return
+          }
+          setPending({
+            title: 'Carregar projeto',
+            message: `Há um projeto aberto. Descartar as alterações e abrir "${file.name}"?`,
+            confirmLabel: 'Descartar e abrir',
+            run: () => doLoadProject(parsed.project),
+          })
+        })
+        .catch(() => setFlash({ tone: 'erro', text: 'Não foi possível ler o arquivo.' }))
+    },
+    [hasProject, doLoadProject],
+  )
+
+  /** Baixar projeto: o JSON do projeto atual, nomeado pelo nome + timestamp. */
+  const downloadProject = useCallback(() => {
+    const project: ProjectFile = { name: projectName, nodes, edges }
+    const blob = new Blob([serializeProject(project)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = projectFileName(projectName)
+    a.click()
+    URL.revokeObjectURL(url)
+    setFlash({ tone: 'ok', text: 'Download do projeto iniciado' })
+  }, [projectName, nodes, edges])
+
   if (error) return <div className="center">Erro ao carregar o projeto: {error}</div>
   if (!library) return <div className="center">Carregando library.json…</div>
 
@@ -328,16 +446,28 @@ export default function App() {
     (inspectedNode ? (library.byId[inspectedNode.componentId] ?? null) : null) ??
     (libSelection ? (library.byId[libSelection] ?? null) : null)
 
+  /** Faixa ocupada na base (legenda + problemas): as barras laterais param
+   * acima dela, para flutuarem so sobre a area de edicao do diagrama. */
+  const bottomH = LEGEND_H + (issuesCollapsed ? 0 : issuesHeight.size)
+
   return (
-    <div className="app">
+    <div className="app" style={{ '--bottom-h': `${bottomH}px` } as CSSProperties}>
       <main className="workspace">
         <header className="toolbar">
-          <strong>mecha-arch</strong>
+          <strong>mechart</strong>
+          <ProjectName name={projectName} onRename={setProjectName} />
+          <span className="toolbar__divider" aria-hidden="true" />
+          <ProjectMenu
+            onNew={requestNewProject}
+            onLoadFile={requestLoadProject}
+            onDownload={downloadProject}
+          />
           <div className="toolbar__modes" role="group" aria-label="Modo de visualização">
             <button
               type="button"
               className={`mode${!expanded ? ' mode--on' : ''}`}
               aria-pressed={!expanded}
+              data-tip="visão em blocos — card compacto, sem os condutores"
               onClick={() => setExpanded(false)}
             >
               blocos
@@ -346,6 +476,7 @@ export default function App() {
               type="button"
               className={`mode${expanded ? ' mode--on' : ''}`}
               aria-pressed={expanded}
+              data-tip="visão em condutores — abre os pinos e as ligações"
               onClick={() => setExpanded(true)}
             >
               condutores
@@ -357,6 +488,7 @@ export default function App() {
               type="button"
               className={`mode${!idAsTitle ? ' mode--on' : ''}`}
               aria-pressed={!idAsTitle}
+              data-tip="título do card pelo tipo do componente"
               onClick={() => setIdAsTitle(false)}
             >
               tipo
@@ -365,6 +497,7 @@ export default function App() {
               type="button"
               className={`mode${idAsTitle ? ' mode--on' : ''}`}
               aria-pressed={idAsTitle}
+              data-tip="título do card pelo id da instância"
               onClick={() => setIdAsTitle(true)}
             >
               id
@@ -378,126 +511,119 @@ export default function App() {
                 ? 'clique no bloco de destino — Esc cancela'
                 : 'clique num bloco · Shift+clique seleciona vários para mover em bloco'}
           </span>
-          <span className={`toolbar__save toolbar__save--${save}`}>
-            {save === 'saving'
-              ? 'salvando…'
-              : save === 'saved'
-                ? 'salvo em data/diagram.json'
-                : save === 'error'
-                  ? 'falha ao salvar'
-                  : ''}
-          </span>
         </header>
 
-        <ReactFlowProvider>
-          <Canvas
-            library={library}
-            nodes={nodes}
-            edges={edges}
-            issues={issues}
-            selectedNodeIds={selectedNodeIds}
-            connectFrom={connectFrom}
-            expanded={expanded}
-            idAsTitle={idAsTitle}
-            onNodesChange={setNodes}
-            onSelectionChange={(ids) => {
-              syncSelection(ids)
-              if (ids.length > 0) setLibSelection(null)
-            }}
-            onDrop={addNode}
-            onDeleteEdges={deleteEdges}
-            onStartConnect={(id) => {
-              setFlash(null)
-              setDisconnecting(null)
-              setConnectFrom(id)
-            }}
-            onCancelConnect={cancelConnect}
-            onStartDisconnect={startDisconnect}
-            onPickTarget={pickTarget}
-            centerRef={canvasCenter}
-          />
-        </ReactFlowProvider>
+        <div className="diagram-area">
+          <ReactFlowProvider>
+            <Canvas
+              library={library}
+              nodes={nodes}
+              edges={edges}
+              issues={issues}
+              selectedNodeIds={selectedNodeIds}
+              connectFrom={connectFrom}
+              expanded={expanded}
+              idAsTitle={idAsTitle}
+              onNodesChange={setNodes}
+              onSelectionChange={(ids) => {
+                syncSelection(ids)
+                if (ids.length > 0) setLibSelection(null)
+              }}
+              onDrop={addNode}
+              onDeleteEdges={deleteEdges}
+              onStartConnect={(id) => {
+                setFlash(null)
+                setDisconnecting(null)
+                setConnectFrom(id)
+              }}
+              onCancelConnect={cancelConnect}
+              onStartDisconnect={startDisconnect}
+              onPickTarget={pickTarget}
+              centerRef={canvasCenter}
+            />
+          </ReactFlowProvider>
+
+          <div
+            className={`overlay-panel overlay-panel--left${libCollapsed ? ' overlay-panel--collapsed' : ''}`}
+            style={{ width: libWidth.size }}
+            inert={libCollapsed || undefined}
+          >
+            <LibraryPanel
+              components={library.components}
+              selectedId={libSelection}
+              onSelect={(id) => {
+                setLibSelection(id)
+                setSelectedNodeIds([])
+              }}
+              onAdd={(id) =>
+                addNode(id, nudgeClear(canvasCenter.current?.() ?? freeSpot(nodes), nodes))
+              }
+            />
+          </div>
+          {!libCollapsed && (
+            <div
+              className="resize-handle resize-handle--v"
+              style={{ left: libWidth.size }}
+              role="separator"
+              aria-orientation="vertical"
+              onPointerDown={libWidth.onPointerDown}
+              onDoubleClick={libWidth.reset}
+            />
+          )}
+          <button
+            type="button"
+            className="panel-tab panel-tab--left"
+            style={{ left: libCollapsed ? 0 : libWidth.size + 6 }}
+            onClick={() => setLibCollapsed((v) => !v)}
+            aria-label={libCollapsed ? 'Mostrar biblioteca' : 'Esconder biblioteca'}
+            title={libCollapsed ? 'Mostrar biblioteca' : 'Esconder biblioteca'}
+          >
+            {libCollapsed ? '›' : '‹'}
+          </button>
+
+          <div
+            className={`overlay-panel overlay-panel--right${inspCollapsed ? ' overlay-panel--collapsed' : ''}`}
+            style={{ width: inspWidth.size }}
+            inert={inspCollapsed || undefined}
+          >
+            <Inspector
+              component={inspected}
+              units={library.units}
+              node={inspectedNode}
+              onNodeChange={
+                inspectedNode
+                  ? (patch) =>
+                      setNodes((prev) =>
+                        prev.map((n) => (n.id === inspectedNode.id ? { ...n, ...patch } : n)),
+                      )
+                  : undefined
+              }
+            />
+          </div>
+          {!inspCollapsed && (
+            <div
+              className="resize-handle resize-handle--v"
+              style={{ right: inspWidth.size }}
+              role="separator"
+              aria-orientation="vertical"
+              onPointerDown={inspWidth.onPointerDown}
+              onDoubleClick={inspWidth.reset}
+            />
+          )}
+          <button
+            type="button"
+            className="panel-tab panel-tab--right"
+            style={{ right: inspCollapsed ? 0 : inspWidth.size + 6 }}
+            onClick={() => setInspCollapsed((v) => !v)}
+            aria-label={inspCollapsed ? 'Mostrar inspetor' : 'Esconder inspetor'}
+            title={inspCollapsed ? 'Mostrar inspetor' : 'Esconder inspetor'}
+          >
+            {inspCollapsed ? '‹' : '›'}
+          </button>
+        </div>
       </main>
 
       <Legend library={library} nodes={nodes} edges={edges} />
-
-      <div
-        className={`overlay-panel overlay-panel--left${libCollapsed ? ' overlay-panel--collapsed' : ''}`}
-        style={{ width: libWidth.size }}
-        inert={libCollapsed || undefined}
-      >
-        <LibraryPanel
-          components={library.components}
-          selectedId={libSelection}
-          onSelect={(id) => {
-            setLibSelection(id)
-            setSelectedNodeIds([])
-          }}
-          onAdd={(id) =>
-            addNode(id, nudgeClear(canvasCenter.current?.() ?? freeSpot(nodes), nodes))
-          }
-        />
-      </div>
-      {!libCollapsed && (
-        <div
-          className="resize-handle resize-handle--v"
-          style={{ left: libWidth.size }}
-          role="separator"
-          aria-orientation="vertical"
-          onPointerDown={libWidth.onPointerDown}
-          onDoubleClick={libWidth.reset}
-        />
-      )}
-      <button
-        type="button"
-        className="panel-tab panel-tab--left"
-        style={{ left: libCollapsed ? 0 : libWidth.size + 6 }}
-        onClick={() => setLibCollapsed((v) => !v)}
-        aria-label={libCollapsed ? 'Mostrar biblioteca' : 'Esconder biblioteca'}
-        title={libCollapsed ? 'Mostrar biblioteca' : 'Esconder biblioteca'}
-      >
-        {libCollapsed ? '›' : '‹'}
-      </button>
-
-      <div
-        className={`overlay-panel overlay-panel--right${inspCollapsed ? ' overlay-panel--collapsed' : ''}`}
-        style={{ width: inspWidth.size }}
-        inert={inspCollapsed || undefined}
-      >
-        <Inspector
-          component={inspected}
-          units={library.units}
-          node={inspectedNode}
-          onNodeChange={
-            inspectedNode
-              ? (patch) =>
-                  setNodes((prev) =>
-                    prev.map((n) => (n.id === inspectedNode.id ? { ...n, ...patch } : n)),
-                  )
-              : undefined
-          }
-        />
-      </div>
-      {!inspCollapsed && (
-        <div
-          className="resize-handle resize-handle--v"
-          style={{ right: inspWidth.size }}
-          role="separator"
-          aria-orientation="vertical"
-          onPointerDown={inspWidth.onPointerDown}
-          onDoubleClick={inspWidth.reset}
-        />
-      )}
-      <button
-        type="button"
-        className="panel-tab panel-tab--right"
-        style={{ right: inspCollapsed ? 0 : inspWidth.size + 6 }}
-        onClick={() => setInspCollapsed((v) => !v)}
-        aria-label={inspCollapsed ? 'Mostrar inspetor' : 'Esconder inspetor'}
-        title={inspCollapsed ? 'Mostrar inspetor' : 'Esconder inspetor'}
-      >
-        {inspCollapsed ? '‹' : '›'}
-      </button>
 
       <div
         className={`overlay-panel overlay-panel--bottom${issuesCollapsed ? ' overlay-panel--collapsed' : ''}`}
@@ -544,6 +670,21 @@ export default function App() {
           nodeLabel={nodeLabel(disconnectOptions.node, library.byId[disconnectOptions.node.componentId])}
           onConfirm={confirmDisconnect}
           onCancel={cancelDisconnect}
+        />
+      ) : null}
+
+      {pending ? (
+        <ConfirmModal
+          title={pending.title}
+          message={pending.message}
+          confirmLabel={pending.confirmLabel}
+          danger
+          onConfirm={() => {
+            const run = pending.run
+            setPending(null)
+            run()
+          }}
+          onCancel={() => setPending(null)}
         />
       ) : null}
     </div>

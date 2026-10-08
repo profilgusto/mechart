@@ -1,43 +1,36 @@
-# Editor de arquitetura de sistemas mecatrônicos (mecha-arch).
+# Editor de arquitetura de sistemas mecatrônicos (mechart).
 #
-#   docker compose up          sobe em http://localhost:5180
-#   docker compose up -d       em segundo plano
+#   docker compose up -d       sobe em http://localhost:5180
 #   docker compose down        para
-#   docker compose build       reconstroi apos mexer no package.json
+#   docker compose build       reconstroi depois de mexer no codigo (site estatico)
 #
-# A aplicação e auto-contida: o codigo e os dados (data/) vivem nesta pasta.
-# Derrubar o container nao perde nada.
+# Em producao roda o site ESTATICO gerado por `npm run build`, servido por nginx
+# com headers de seguranca. Nao ha servidor de aplicacao, nao ha endpoint de
+# escrita e nada e montado do host: a imagem ja contem tudo. Para desenvolver,
+# use `npm run dev` (Vite) direto no Mac, nao este compose.
 
 services:
-  mecha-arch:
+  mechart:
     build:
       context: .
-    container_name: mecha-arch
+    image: mechart:latest
+    container_name: mechart
     ports:
-      - "5180:5180"
-    volumes:
-      # O codigo do app, para editar no Mac e ver o HMR recarregar. Os dados do
-      # projeto (data/) tambem vivem aqui e sao gravados de volta pelo endpoint
-      # /api/save.
-      - .:/app
-
-      # Mascara o node_modules do host (binarios do macOS) com o que foi
-      # instalado na imagem (linux/arm64). Sem isso o Vite nao sobe.
-      - mecha-node-modules:/app/node_modules
-
-    environment:
-      # Bind mount do macOS nao entrega eventos de inotify: o watcher do Vite
-      # precisa de polling para enxergar as edicoes feitas no editor.
-      MECHA_POLL: "1"
-
+      - "5180:8080"
+    # Rootfs somente leitura; os poucos diretorios que o nginx escreve vao para
+    # tmpfs. Roda non-root (usuario da imagem) e sem ganho de privilegios.
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+    security_opt:
+      - no-new-privileges:true
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:5180/api/data"]
-      interval: 10s
+      # 127.0.0.1 explicito: o nginx escuta so em IPv4, e `localhost` no busybox
+      # wget resolve para ::1 e nao cai de volta para o IPv4.
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/"]
+      interval: 30s
       timeout: 5s
-      retries: 5
-      start_period: 20s
-
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
-
-volumes:
-  mecha-node-modules:

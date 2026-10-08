@@ -1,17 +1,32 @@
-# Imagem de desenvolvimento: o app roda pelo dev server do Vite, porque ele e
-# quem serve /api/data e /api/save -- e e por /api/save que o diagrama volta
-# para o disco do Mac.
-FROM node:24-alpine
+# syntax=docker/dockerfile:1
+
+# --- Estagio 1: build do site estatico ---
+# Instala as dependencias e roda `vite build`. Nada daqui vai para a imagem
+# final alem dos arquivos gerados em dist/.
+FROM node:24-alpine AS build
 
 WORKDIR /app
 
-# As dependencias sao instaladas DENTRO da imagem (binarios linux/arm64).
-# O node_modules do host, com binarios do macOS, e mascarado por um volume
-# nomeado no compose e nunca chega aqui.
-COPY package.json package-lock.json* ./
-RUN npm ci || npm install
+# Copia primeiro so os manifestos: o `npm ci` fica em cache enquanto o
+# package-lock.json nao mudar.
+COPY package.json package-lock.json ./
+RUN npm ci
 
-ENV MECHA_POLL=1
-EXPOSE 5180
+# O restante do codigo. `.git`, node_modules e dist ficam de fora pelo
+# .dockerignore. `data/` entra porque o catalogo e as portas sao embutidos no
+# bundle via `?raw` (ver src/data/load.ts).
+COPY . .
+RUN npm run build
 
-CMD ["npm", "run", "dev"]
+
+# --- Estagio 2: runtime estatico ---
+# nginx-unprivileged roda como usuario nao-root (uid 101) e escuta na 8080.
+FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
+
+# Config do servidor: SPA, cache, compressao e headers de seguranca.
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Apenas os arquivos gerados no estagio de build.
+COPY --from=build /app/dist /usr/share/nginx/html
+
+EXPOSE 8080

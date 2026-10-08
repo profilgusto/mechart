@@ -2,39 +2,30 @@ import type { Component, Library, PortSpec } from '../model/types'
 import type { ComponentType } from '../model/component-type'
 import { parseLibraryFile } from './parse'
 import { categoryOf } from './normalize'
+import { readStoredProject, type ProjectFile } from './project'
 
-type ApiPayload = {
-  libraryRaw: string | null
-  portsRaw: string | null
-  diagramRaw: string | null
-}
+// O catalogo e as portas sao embutidos no bundle em tempo de build (`?raw`).
+// O site e 100% estatico: nao existe servidor nem endpoint /api, entao os dados
+// do projeto viajam dentro do proprio JavaScript gerado por `npm run build`.
+import libraryRaw from '../../data/library.json?raw'
+import portsRaw from '../../data/ports.json?raw'
 
 export type LoadResult = {
   library: Library
-  diagram: unknown | null
+  project: ProjectFile | null
 }
 
 export async function loadProject(): Promise<LoadResult> {
-  const res = await fetch('/api/data')
-  if (!res.ok) throw new Error(`/api/data respondeu ${res.status}`)
-  const payload = (await res.json()) as ApiPayload
+  const { components: rawComponents, units } = parseLibraryFile(libraryRaw)
 
-  if (!payload.libraryRaw) {
-    throw new Error('library.json não encontrado em data/')
-  }
-
-  const { components: rawComponents, units } = parseLibraryFile(payload.libraryRaw)
-
-  const portSpecs: Record<string, PortSpec> = payload.portsRaw
-    ? (JSON.parse(payload.portsRaw) as Record<string, PortSpec>)
-    : {}
+  const portSpecs = JSON.parse(portsRaw) as Record<string, PortSpec>
 
   const components: Component[] = Object.entries(rawComponents).map(([id, raw]) => {
     const spec = portSpecs[id]
-    
+
     // Extrai o tipo hierárquico (string ou objeto)
     const type: ComponentType = raw.type as ComponentType || 'unknown'
-    
+
     return {
       id,
       description: typeof raw.description === 'string' ? raw.description : id,
@@ -70,6 +61,10 @@ export async function loadProject(): Promise<LoadResult> {
   const byId: Record<string, Component> = {}
   for (const c of components) byId[c.id] = c
 
+  // O projeto em edicao no navegador e a unica fonte: e onde o usuario parou.
+  // Sem servidor, nao ha copia em disco -- so o localStorage e o download.
+  const project = readStoredProject()
+
   return {
     library: {
       components,
@@ -77,15 +72,6 @@ export async function loadProject(): Promise<LoadResult> {
       units,
       missingPorts: components.filter((c) => c.ports.length === 0).map((c) => c.id),
     },
-    diagram: payload.diagramRaw ? JSON.parse(payload.diagramRaw) : null,
+    project,
   }
-}
-
-export async function saveDiagram(diagram: unknown): Promise<void> {
-  const res = await fetch('/api/save', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(diagram, null, 2),
-  })
-  if (!res.ok) throw new Error(`falha ao salvar: ${res.status}`)
 }
