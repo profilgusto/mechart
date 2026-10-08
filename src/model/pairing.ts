@@ -91,7 +91,7 @@ export function possibleConnections(
     const semPortas = ca.ports.length === 0 ? ca.id : cb.id
     return {
       ok: false,
-      reason: `${semPortas} ainda não tem portas declaradas em arquitetura/ports.json.`,
+      reason: `${semPortas} ainda não tem portas declaradas em data/ports.json.`,
     }
   }
 

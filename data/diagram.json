@@ -1,0 +1,415 @@
+{
+  "nodes": [
+    {
+      "id": "battery-cell#a",
+      "componentId": "ncr18650b",
+      "position": {
+        "x": -78.13070638384613,
+        "y": 1027.8007661733227
+      },
+      "label": "pack 3S2P",
+      "series": 3,
+      "parallel": 2
+    },
+    {
+      "id": "bms#mud1kqru",
+      "componentId": "bw-3sjh-25a",
+      "position": {
+        "x": 249.1755798735793,
+        "y": 1046.3421708473097
+      }
+    },
+    {
+      "id": "battery-charger#mud1on4k",
+      "componentId": "usb-c-boost-charger-3s",
+      "position": {
+        "x": -66.05444080153063,
+        "y": 837.6536265289506
+      }
+    },
+    {
+      "id": "motor-driver#mud7xa1b",
+      "componentId": "tb6612fng",
+      "position": {
+        "x": 1460.688800821342,
+        "y": 331.3879828440692
+      }
+    },
+    {
+      "id": "ndub22ta#mud9tqso",
+      "componentId": "ndub22ta",
+      "position": {
+        "x": 614.7862995698288,
+        "y": 908.1295848883851
+      },
+      "setVoltage": 12
+    },
+    {
+      "id": "jga25-371#muda67tt",
+      "componentId": "jga25-371",
+      "position": {
+        "x": 1766.3712190839756,
+        "y": 369.118019632382
+      }
+    },
+    {
+      "id": "jga25-371#muda6b2t",
+      "componentId": "jga25-371",
+      "position": {
+        "x": 1767.3234175547443,
+        "y": 535.1834798252245
+      },
+      "label": "jga25-371 (2)"
+    },
+    {
+      "id": "mp1584en#muda9w85",
+      "componentId": "mp1584en",
+      "position": {
+        "x": 629.1324617735204,
+        "y": 1125.6026689687947
+      },
+      "setVoltage": 3.3
+    },
+    {
+      "id": "esp32-s3-wroom-1-n16r8#mudaam4j",
+      "componentId": "esp32-s3-wroom-1-n16r8",
+      "position": {
+        "x": 1072.268963826465,
+        "y": 848.8220299024878
+      }
+    },
+    {
+      "id": "mp1584en#mudau6ed",
+      "componentId": "mp1584en",
+      "position": {
+        "x": 627.431094963735,
+        "y": 1361.2373917063005
+      },
+      "label": "mp1584en (2)",
+      "setVoltage": 5
+    },
+    {
+      "id": "orange-pi-zero-2w#mudbhsr2",
+      "componentId": "orange-pi-zero-2w",
+      "position": {
+        "x": 1051.9447402908618,
+        "y": 2011.164094234308
+      }
+    },
+    {
+      "id": "external-source#mudbt7h1",
+      "componentId": "external-source",
+      "position": {
+        "x": -339.8375562666372,
+        "y": 817.0431921560496
+      },
+      "label": "Fonte DC-5V"
+    },
+    {
+      "id": "ldrobot-d500#mudbwha6",
+      "componentId": "ldrobot-d500",
+      "position": {
+        "x": 1435.4586451401467,
+        "y": 2003.442738452597
+      }
+    },
+    {
+      "id": "lsm22100#mudbywj8",
+      "componentId": "lsm22100",
+      "position": {
+        "x": 1431.3168068485672,
+        "y": 2250.3071675024175
+      }
+    },
+    {
+      "id": "aht20-bmp280#mue9j1yi",
+      "componentId": "aht20-bmp280",
+      "position": {
+        "x": 1753.126686512144,
+        "y": 1305.2046868487985
+      }
+    },
+    {
+      "id": "mg92b#mulcqvpb",
+      "componentId": "mg92b",
+      "position": {
+        "x": 1756.4736026009566,
+        "y": 710.0558314944362
+      }
+    },
+    {
+      "id": "mg92b#mulcqxbt",
+      "componentId": "mg92b",
+      "position": {
+        "x": 1755.2971193318058,
+        "y": 877.2242083620043
+      },
+      "label": "mg92b (2)"
+    },
+    {
+      "id": "mh-z1911a#muldnrx0",
+      "componentId": "mh-z1911a",
+      "position": {
+        "x": 1756.494297452925,
+        "y": 1489.3175092819781
+      }
+    },
+    {
+      "id": "bno086#muldzubv",
+      "componentId": "bno086",
+      "position": {
+        "x": 1751.6100841005746,
+        "y": 1098.7574197894412
+      }
+    },
+    {
+      "id": "as7343#mule14ty",
+      "componentId": "as7343",
+      "position": {
+        "x": 1753.0643417456488,
+        "y": 1742.660397498187
+      }
+    },
+    {
+      "id": "guva-s12sd#mule6y4e",
+      "componentId": "guva-s12sd",
+      "position": {
+        "x": 1759.69991315603,
+        "y": 1907.7592018742987
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "battery-cell#a:out->bms#mud1kqru:pack",
+      "source": "battery-cell#a",
+      "sourcePort": "out",
+      "target": "bms#mud1kqru",
+      "targetPort": "pack"
+    },
+    {
+      "id": "battery-charger#mud1on4k:bat->bms#mud1kqru:p",
+      "source": "battery-charger#mud1on4k",
+      "sourcePort": "bat",
+      "target": "bms#mud1kqru",
+      "targetPort": "p"
+    },
+    {
+      "id": "bms#mud1kqru:p->ndub22ta#mud9tqso:in",
+      "source": "bms#mud1kqru",
+      "sourcePort": "p",
+      "target": "ndub22ta#mud9tqso",
+      "targetPort": "in"
+    },
+    {
+      "id": "ndub22ta#mud9tqso:out->motor-driver#mud7xa1b:vm",
+      "source": "ndub22ta#mud9tqso",
+      "sourcePort": "out",
+      "target": "motor-driver#mud7xa1b",
+      "targetPort": "vm"
+    },
+    {
+      "id": "motor-driver#mud7xa1b:out-a->jga25-371#muda67tt:pwr",
+      "source": "motor-driver#mud7xa1b",
+      "sourcePort": "out-a",
+      "target": "jga25-371#muda67tt",
+      "targetPort": "pwr"
+    },
+    {
+      "id": "motor-driver#mud7xa1b:out-b->jga25-371#muda6b2t:pwr",
+      "source": "motor-driver#mud7xa1b",
+      "sourcePort": "out-b",
+      "target": "jga25-371#muda6b2t",
+      "targetPort": "pwr"
+    },
+    {
+      "id": "bms#mud1kqru:p->mp1584en#muda9w85:in",
+      "source": "bms#mud1kqru",
+      "sourcePort": "p",
+      "target": "mp1584en#muda9w85",
+      "targetPort": "in"
+    },
+    {
+      "id": "mp1584en#muda9w85:out->esp32-s3-wroom-1-n16r8#mudaam4j:3v3",
+      "source": "mp1584en#muda9w85",
+      "sourcePort": "out",
+      "target": "esp32-s3-wroom-1-n16r8#mudaam4j",
+      "targetPort": "3v3"
+    },
+    {
+      "id": "esp32-s3-wroom-1-n16r8#mudaam4j:gpio->motor-driver#mud7xa1b:dir-a",
+      "source": "esp32-s3-wroom-1-n16r8#mudaam4j",
+      "sourcePort": "gpio",
+      "target": "motor-driver#mud7xa1b",
+      "targetPort": "dir-a"
+    },
+    {
+      "id": "esp32-s3-wroom-1-n16r8#mudaam4j:gpio->motor-driver#mud7xa1b:dir-b",
+      "source": "esp32-s3-wroom-1-n16r8#mudaam4j",
+      "sourcePort": "gpio",
+      "target": "motor-driver#mud7xa1b",
+      "targetPort": "dir-b"
+    },
+    {
+      "id": "esp32-s3-wroom-1-n16r8#mudaam4j:gpio->motor-driver#mud7xa1b:stby",
+      "source": "esp32-s3-wroom-1-n16r8#mudaam4j",
+      "sourcePort": "gpio",
+      "target": "motor-driver#mud7xa1b",
+      "targetPort": "stby"
+    },
+    {
+      "id": "esp32-s3-wroom-1-n16r8#mudaam4j:pwm->motor-driver#mud7xa1b:pwm-a",
+      "source": "esp32-s3-wroom-1-n16r8#mudaam4j",
+      "sourcePort": "pwm",
+      "target": "motor-driver#mud7xa1b",
+      "targetPort": "pwm-a"
+    },
+    {
+      "id": "esp32-s3-wroom-1-n16r8#mudaam4j:pwm->motor-driver#mud7xa1b:pwm-b",
+      "source": "esp32-s3-wroom-1-n16r8#mudaam4j",
+      "sourcePort": "pwm",
+      "target": "motor-driver#mud7xa1b",
+      "targetPort": "pwm-b"
+    },
+    {
+      "id": "bms#mud1kqru:p->mp1584en#mudau6ed:in",
+      "source": "bms#mud1kqru",
+      "sourcePort": "p",
+      "target": "mp1584en#mudau6ed",
+      "targetPort": "in"
+    },
+    {
+      "id": "mp1584en#mudau6ed:out->orange-pi-zero-2w#mudbhsr2:pwr-header",
+      "source": "mp1584en#mudau6ed",
+      "sourcePort": "out",
+      "target": "orange-pi-zero-2w#mudbhsr2",
+      "targetPort": "pwr-header"
+    },
+    {
+      "id": "external-source#mudbt7h1:out->battery-charger#mud1on4k:usb-c",
+      "source": "external-source#mudbt7h1",
+      "sourcePort": "out",
+      "target": "battery-charger#mud1on4k",
+      "targetPort": "usb-c"
+    },
+    {
+      "id": "mp1584en#mudau6ed:out->ldrobot-d500#mudbwha6:pwr",
+      "source": "mp1584en#mudau6ed",
+      "sourcePort": "out",
+      "target": "ldrobot-d500#mudbwha6",
+      "targetPort": "pwr"
+    },
+    {
+      "id": "orange-pi-zero-2w#mudbhsr2:pwm->ldrobot-d500#mudbwha6:pwm-in",
+      "source": "orange-pi-zero-2w#mudbhsr2",
+      "sourcePort": "pwm",
+      "target": "ldrobot-d500#mudbwha6",
+      "targetPort": "pwm-in"
+    },
+    {
+      "id": "ldrobot-d500#mudbwha6:uart-tx->orange-pi-zero-2w#mudbhsr2:uart",
+      "source": "ldrobot-d500#mudbwha6",
+      "sourcePort": "uart-tx",
+      "target": "orange-pi-zero-2w#mudbhsr2",
+      "targetPort": "uart"
+    },
+    {
+      "id": "orange-pi-zero-2w#mudbhsr2:usb-otg->lsm22100#mudbywj8:usb",
+      "source": "orange-pi-zero-2w#mudbhsr2",
+      "sourcePort": "usb-otg",
+      "target": "lsm22100#mudbywj8",
+      "targetPort": "usb"
+    },
+    {
+      "id": "orange-pi-zero-2w#mudbhsr2:uart->esp32-s3-wroom-1-n16r8#mudaam4j:uart",
+      "source": "orange-pi-zero-2w#mudbhsr2",
+      "sourcePort": "uart",
+      "target": "esp32-s3-wroom-1-n16r8#mudaam4j",
+      "targetPort": "uart"
+    },
+    {
+      "id": "esp32-s3-wroom-1-n16r8#mudaam4j:i2c->aht20-bmp280#mue9j1yi:i2c",
+      "source": "esp32-s3-wroom-1-n16r8#mudaam4j",
+      "sourcePort": "i2c",
+      "target": "aht20-bmp280#mue9j1yi",
+      "targetPort": "i2c"
+    },
+    {
+      "id": "mp1584en#muda9w85:out->aht20-bmp280#mue9j1yi:pwr",
+      "source": "mp1584en#muda9w85",
+      "sourcePort": "out",
+      "target": "aht20-bmp280#mue9j1yi",
+      "targetPort": "pwr"
+    },
+    {
+      "id": "mp1584en#mudau6ed:out->mg92b#mulcqvpb:pwr",
+      "source": "mp1584en#mudau6ed",
+      "sourcePort": "out",
+      "target": "mg92b#mulcqvpb",
+      "targetPort": "pwr"
+    },
+    {
+      "id": "mp1584en#mudau6ed:out->mg92b#mulcqxbt:pwr",
+      "source": "mp1584en#mudau6ed",
+      "sourcePort": "out",
+      "target": "mg92b#mulcqxbt",
+      "targetPort": "pwr"
+    },
+    {
+      "id": "esp32-s3-wroom-1-n16r8#mudaam4j:pwm->mg92b#mulcqvpb:pwm-in",
+      "source": "esp32-s3-wroom-1-n16r8#mudaam4j",
+      "sourcePort": "pwm",
+      "target": "mg92b#mulcqvpb",
+      "targetPort": "pwm-in"
+    },
+    {
+      "id": "esp32-s3-wroom-1-n16r8#mudaam4j:pwm->mg92b#mulcqxbt:pwm-in",
+      "source": "esp32-s3-wroom-1-n16r8#mudaam4j",
+      "sourcePort": "pwm",
+      "target": "mg92b#mulcqxbt",
+      "targetPort": "pwm-in"
+    },
+    {
+      "id": "mp1584en#mudau6ed:out->mh-z1911a#muldnrx0:pwr",
+      "source": "mp1584en#mudau6ed",
+      "sourcePort": "out",
+      "target": "mh-z1911a#muldnrx0",
+      "targetPort": "pwr"
+    },
+    {
+      "id": "esp32-s3-wroom-1-n16r8#mudaam4j:gpio->mh-z1911a#muldnrx0:hd",
+      "source": "esp32-s3-wroom-1-n16r8#mudaam4j",
+      "sourcePort": "gpio",
+      "target": "mh-z1911a#muldnrx0",
+      "targetPort": "hd"
+    },
+    {
+      "id": "esp32-s3-wroom-1-n16r8#mudaam4j:i2c->mh-z1911a#muldnrx0:i2c",
+      "source": "esp32-s3-wroom-1-n16r8#mudaam4j",
+      "sourcePort": "i2c",
+      "target": "mh-z1911a#muldnrx0",
+      "targetPort": "i2c"
+    },
+    {
+      "id": "mp1584en#muda9w85:out->bno086#muldzubv:pwr",
+      "source": "mp1584en#muda9w85",
+      "sourcePort": "out",
+      "target": "bno086#muldzubv",
+      "targetPort": "pwr"
+    },
+    {
+      "id": "esp32-s3-wroom-1-n16r8#mudaam4j:i2c->bno086#muldzubv:i2c",
+      "source": "esp32-s3-wroom-1-n16r8#mudaam4j",
+      "sourcePort": "i2c",
+      "target": "bno086#muldzubv",
+      "targetPort": "i2c"
+    },
+    {
+      "id": "esp32-s3-wroom-1-n16r8#mudaam4j:i2c->as7343#mule14ty:i2c",
+      "source": "esp32-s3-wroom-1-n16r8#mudaam4j",
+      "sourcePort": "i2c",
+      "target": "as7343#mule14ty",
+      "targetPort": "i2c"
+    }
+  ]
+}

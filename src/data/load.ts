@@ -1,10 +1,10 @@
 import type { Component, Library, PortSpec } from '../model/types'
 import type { ComponentType } from '../model/component-type'
-import { parseComponentsFile } from './parse'
+import { parseLibraryFile } from './parse'
 import { categoryOf } from './normalize'
 
 type ApiPayload = {
-  componentsRaw: string | null
+  libraryRaw: string | null
   portsRaw: string | null
   diagramRaw: string | null
 }
@@ -19,11 +19,11 @@ export async function loadProject(): Promise<LoadResult> {
   if (!res.ok) throw new Error(`/api/data respondeu ${res.status}`)
   const payload = (await res.json()) as ApiPayload
 
-  if (!payload.componentsRaw) {
-    throw new Error('components.json não encontrado na raiz do projeto')
+  if (!payload.libraryRaw) {
+    throw new Error('library.json não encontrado em data/')
   }
 
-  const { components: rawComponents, units } = parseComponentsFile(payload.componentsRaw)
+  const { components: rawComponents, units } = parseLibraryFile(payload.libraryRaw)
 
   const portSpecs: Record<string, PortSpec> = payload.portsRaw
     ? (JSON.parse(payload.portsRaw) as Record<string, PortSpec>)
@@ -47,13 +47,13 @@ export async function loadProject(): Promise<LoadResult> {
     }
   })
 
-  // Fontes externas: nao existem no components.json porque nao sao pecas do
-  // robo. Sao fronteiras do projeto, declaradas so no ports.json -- e por isso
-  // ficam marcadas como `external` e fora do BOM.
+  // Fontes externas: nao existem na library.json porque nao sao pecas do
+  // projeto. Sao fronteiras do sistema, declaradas so no ports.json -- e por
+  // isso ficam marcadas como `external` e fora do BOM.
   for (const [id, spec] of Object.entries(portSpecs)) {
     if (!spec.external || rawComponents[id]) continue
     const description =
-      spec.description ?? 'Alimentação fornecida de fora do projeto — não é uma peça do robô.'
+      spec.description ?? 'Alimentação fornecida de fora do projeto — não é uma peça do sistema.'
     const type = spec.type ?? 'Fonte externa'
     components.push({
       id,

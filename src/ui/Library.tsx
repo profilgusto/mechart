@@ -73,7 +73,7 @@ export default function Library({
                 style={{ ['--cat' as string]: CATEGORY_COLOR[cat] }}
                 draggable
                 onDragStart={(e) => {
-                  e.dataTransfer.setData('application/karu-component', c.id)
+                  e.dataTransfer.setData('application/mecha-component', c.id)
                   e.dataTransfer.effectAllowed = 'move'
                 }}
               >

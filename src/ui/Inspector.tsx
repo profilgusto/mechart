@@ -376,7 +376,7 @@ export default function Inspector({
 
       {component.external ? (
         <div className="banner">
-          Fronteira do projeto: esta alimentação vem de fora do robô e não entra no
+          Fronteira do projeto: esta alimentação vem de fora do sistema e não entra no
           BOM. Declare a tensão e a corrente no inspetor da instância para que as
           cargas sejam verificadas.
         </div>
@@ -388,7 +388,7 @@ export default function Inspector({
 
       {component.ports.length === 0 ? (
         <div className="banner">
-          Portas ainda não declaradas para este componente em <code>arquitetura/ports.json</code>.
+          Portas ainda não declaradas para este componente em <code>data/ports.json</code>.
         </div>
       ) : (
         <>

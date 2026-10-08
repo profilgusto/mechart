@@ -80,6 +80,7 @@ export default function Canvas({
   selectedNodeIds,
   connectFrom,
   expanded,
+  idAsTitle,
   onNodesChange,
   onSelectionChange,
   onDrop,
@@ -100,6 +101,8 @@ export default function Canvas({
   connectFrom: string | null
   /** Modo expandido: cada ligacao abre nos condutores que ela representa. */
   expanded: boolean
+  /** Card mostra o id do componente como titulo, em vez do tipo level-0. */
+  idAsTitle: boolean
   onNodesChange: (next: ArchNode[]) => void
   onSelectionChange: (nodeIds: string[]) => void
   onDrop: (componentId: string, position: { x: number; y: number }) => void
@@ -185,6 +188,7 @@ export default function Canvas({
             incoming: incoming[n.id] ?? {},
             uartInstances,
             expanded,
+            idAsTitle,
             node: n,
             connecting: connectFrom !== null,
             isOrigin: connectFrom === n.id,
@@ -198,7 +202,7 @@ export default function Canvas({
     })
     setInternalNodes(newNodes)
     return newNodes
-  }, [nodes, edges, library, selectedNodeIds, worst, connectFrom, expanded, onStartConnect, onCancelConnect, onStartDisconnect])
+  }, [nodes, edges, library, selectedNodeIds, worst, connectFrom, expanded, idAsTitle, onStartConnect, onCancelConnect, onStartDisconnect])
 
   const flowEdges: Edge[] = useMemo(
     () =>
@@ -353,7 +357,7 @@ export default function Canvas({
         }}
         onDrop={(e) => {
           e.preventDefault()
-          const componentId = e.dataTransfer.getData('application/karu-component')
+          const componentId = e.dataTransfer.getData('application/mecha-component')
           if (!componentId) return
           // clientX/Y sao coordenadas de tela; o fluxo tem pan e zoom proprios.
           const p = screenToFlowPosition({ x: e.clientX, y: e.clientY })
@@ -364,7 +368,7 @@ export default function Canvas({
       >
         <Background gap={16} size={1} />
         <Controls showInteractive={false} />
-        <MiniMap pannable zoomable className="karu-minimap" />
+        <MiniMap pannable zoomable className="mecha-minimap" />
       </ReactFlow>
     </div>
   )

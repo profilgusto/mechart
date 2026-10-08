@@ -7,7 +7,7 @@ export type ArchNode = {
   /** Rotulo livre, ex. "motor traseiro esquerdo". */
   label?: string
   /**
-   * Unidades em serie que este bloco representa. O components.json descreve UMA
+   * Unidades em serie que este bloco representa. A library.json descreve UMA
    * celula; um pack 3S2P e series: 3, parallel: 2.
    * Serie multiplica a TENSAO.
    */

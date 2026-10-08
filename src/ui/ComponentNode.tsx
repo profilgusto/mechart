@@ -23,6 +23,8 @@ export type ComponentNodeData = {
   multiSelected: boolean
   /** Modo expandido: as portas ligadas abrem nos seus condutores. */
   expanded: boolean
+  /** Card mostra o id do componente como titulo, em vez do tipo level-0. */
+  idAsTitle: boolean
   node: ArchNode
   onStartConnect: (nodeId: string) => void
   onCancelConnect: () => void
@@ -61,7 +63,7 @@ function PinRow({
           id={handleId('in', port.id, pin.id)}
           type="target"
           position={Position.Left}
-          className="karu-handle karu-handle--pin"
+          className="mecha-handle mecha-handle--pin"
         />
       ) : null}
       <span className="pinrow__label">
@@ -73,7 +75,7 @@ function PinRow({
           id={handleId('out', port.id, pin.id)}
           type="source"
           position={Position.Right}
-          className="karu-handle karu-handle--pin"
+          className="mecha-handle mecha-handle--pin"
         />
       ) : null}
     </div>
@@ -101,7 +103,7 @@ function UartInstanceRows({ port, instances }: { port: Port; instances: UartInst
                   id={handleId('in', port.id, `${inst.edgeId}|${pin.id}`)}
                   type="target"
                   position={Position.Left}
-                  className="karu-handle karu-handle--pin"
+                  className="mecha-handle mecha-handle--pin"
                 />
               ) : null}
               <span className="pinrow__label">
@@ -113,7 +115,7 @@ function UartInstanceRows({ port, instances }: { port: Port; instances: UartInst
                   id={handleId('out', port.id, `${inst.edgeId}|${pin.id}`)}
                   type="source"
                   position={Position.Right}
-                  className="karu-handle karu-handle--pin"
+                  className="mecha-handle mecha-handle--pin"
                 />
               ) : null}
             </div>
@@ -133,6 +135,7 @@ function PortRow({
   inVolt,
   inRange,
   inLevel,
+  showHandle = true,
 }: {
   port: Port
   ligada: boolean
@@ -147,6 +150,12 @@ function PortRow({
   inRange?: boolean
   /** 'bad' se não cabe na entrada; 'warn' se a fonte pode sair da faixa. */
   inLevel?: 'bad' | 'warn' | null
+  /**
+   * false no modo condutores quando esta porta abre em pinos/instâncias
+   * abaixo: o quadradinho da porta pareceria uma ligação em si, enquanto as
+   * ligações de verdade chegam nas bolinhas dos condutores logo abaixo.
+   */
+  showHandle?: boolean
 }) {
   const papeis = rolesOf(port)
   const recebe = papeis.includes('in')
@@ -158,12 +167,12 @@ function PortRow({
       className={`prow prow--${papel}${ligada ? ' prow--on' : ''}${falta ? ' prow--missing' : ''}${incerta(port) ? ' prow--unknown' : ''}`}
       title={falta ? 'obrigatória e ainda não ligada' : undefined}
     >
-      {recebe ? (
+      {recebe && showHandle ? (
         <Handle
           id={handleId('in', port.id)}
           type="target"
           position={Position.Left}
-          className={`karu-handle karu-handle--${port.kind}${incerta(port) ? ' karu-handle--unknown' : ''}`}
+          className={`mecha-handle mecha-handle--${port.kind}${incerta(port) ? ' mecha-handle--unknown' : ''}`}
         />
       ) : null}
 
@@ -204,12 +213,12 @@ function PortRow({
             : port.protocol}
       </span>
 
-      {envia ? (
+      {envia && showHandle ? (
         <Handle
           id={handleId('out', port.id)}
           type="source"
           position={Position.Right}
-          className={`karu-handle karu-handle--${port.kind}${incerta(port) ? ' karu-handle--unknown' : ''}`}
+          className={`mecha-handle mecha-handle--${port.kind}${incerta(port) ? ' mecha-handle--unknown' : ''}`}
         />
       ) : null}
     </div>
@@ -228,6 +237,7 @@ export default function ComponentNode({ id, data, selected }: NodeProps<Componen
     isOrigin,
     multiSelected,
     expanded,
+    idAsTitle,
     node,
   } = data
   const color = CATEGORY_COLOR[component.category]
@@ -305,20 +315,36 @@ export default function ComponentNode({ id, data, selected }: NodeProps<Componen
           const hierarchy = getTypeHierarchy(component.type)
           const mainType = hierarchy[0] // level-0
           const subTypes = hierarchy.slice(1).join(' · ') // level-1, level-2, ...
-          
+          const allTypes = hierarchy.join(' · ') // level-0, level-1, level-2, ...
+
           return (
             <>
-              <div className="node__title">{mainType}</div>
-              {subTypes && <div className="node__subtype">{subTypes}</div>}
-              {component.external ? (
-                <div className="node__external" title="alimentação prevista fora do projeto — não é uma peça do robô">
-                  fora do projeto
-                </div>
-              ) : null}
-              <div className="node__meta">
-                <span className="node__id">{component.id}</span>
-                {arrangement ? ` · ${arrangement}` : ` · ${component.ports.length} portas`}
-              </div>
+              {idAsTitle ? (
+                <>
+                  <div className="node__title">{component.id}</div>
+                  {allTypes && <div className="node__subtype">{allTypes}</div>}
+                  {component.external ? (
+                    <div className="node__external" title="alimentação prevista fora do projeto — não é uma peça do sistema">
+                      fora do projeto
+                    </div>
+                  ) : null}
+                  {arrangement ? <div className="node__meta">{arrangement}</div> : null}
+                </>
+              ) : (
+                <>
+                  <div className="node__title">{mainType}</div>
+                  {subTypes && <div className="node__subtype">{subTypes}</div>}
+                  {component.external ? (
+                    <div className="node__external" title="alimentação prevista fora do projeto — não é uma peça do sistema">
+                      fora do projeto
+                    </div>
+                  ) : null}
+                  <div className="node__meta">
+                    <span className="node__id">{component.id}</span>
+                    {arrangement ? ` · ${arrangement}` : null}
+                  </div>
+                </>
+              )}
             </>
           )
         })()}
@@ -352,6 +378,7 @@ export default function ComponentNode({ id, data, selected }: NodeProps<Componen
                   inVolt={inc?.text}
                   inRange={inc?.range}
                   inLevel={inc?.level}
+                  showHandle={!expanded || (!instances && !pins)}
                 />
                 {instances ? (
                   <UartInstanceRows port={p} instances={instances} />

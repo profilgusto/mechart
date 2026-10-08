@@ -1,4 +1,4 @@
-/** Um valor numerico do components.json, depois de normalizado. */
+/** Um valor numerico da library.json, depois de normalizado. */
 export type Range = {
   min?: number
   nom?: number
@@ -75,14 +75,14 @@ export type Port = {
    * um barramento (I²C/SPI), onde várias ligações dividem os mesmos fios.
    */
   instances?: string[]
-  /** Caminho no components.json de onde o dado veio (rastreabilidade). */
+  /** Caminho na library.json de onde o dado veio (rastreabilidade). */
   src?: string
   note?: string
 }
 
 /**
  * Numeros de UMA unidade, usados para somar um pack. Ficam aqui, e nao no
- * codigo, para que a escolha de qual campo do components.json usar continue
+ * codigo, para que a escolha de qual campo da library.json usar continue
  * documentada e rastreavel.
  */
 export type PackUnit = {
@@ -108,9 +108,9 @@ export type PortSpec = {
   category?: Category
   instance?: InstanceSpec
   /**
-   * Fronteira do projeto: uma fonte que nao e peca do robo, mas alimenta o
+   * Fronteira do projeto: uma fonte que nao e peca do sistema, mas alimenta o
    * quadro de fora (o USB-C do charger ligado numa fonte de bancada). Nao vem
-   * do components.json -- e declarada direto no ports.json e nunca entra no BOM.
+   * da library.json -- e declarada direto no ports.json e nunca entra no BOM.
    */
   external?: boolean
   /** Descricao do pseudo-componente externo (so quando `external`). */
@@ -122,7 +122,7 @@ export type PortSpec = {
 
 import type { ComponentType } from './component-type'
 
-/** Um componente cru do components.json, mais o que a ferramenta deriva. */
+/** Um componente cru da library.json, mais o que a ferramenta deriva. */
 export type Component = {
   id: string
   description: string
@@ -141,7 +141,7 @@ export type Library = {
   components: Component[]
   byId: Record<string, Component>
   units: Record<string, string>
-  /** Ids presentes no components.json que ainda nao tem portas declaradas. */
+  /** Ids presentes na library.json que ainda nao tem portas declaradas. */
   missingPorts: string[]
 }
 

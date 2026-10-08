@@ -1,5 +1,5 @@
 /**
- * O components.json nao e JSON valido: tem comentarios `//` e dois objetos de
+ * A library.json nao e JSON valido: tem comentarios `//` e dois objetos de
  * topo concatenados (o mapa de componentes e, depois de `// units`, o glossario
  * de unidades). O arquivo e a fonte curada a mao do projeto, entao a ferramenta
  * se adapta a ele em vez de reformata-lo.
@@ -56,12 +56,12 @@ export type ParsedSource = {
   units: Record<string, string>
 }
 
-/** Le o components.json cru e devolve os dois documentos ja tipados. */
-export function parseComponentsFile(raw: string): ParsedSource {
+/** Le a library.json crua e devolve os dois documentos ja tipados. */
+export function parseLibraryFile(raw: string): ParsedSource {
   const docs = splitJsonDocuments(stripLineComments(raw))
 
   if (docs.length === 0) {
-    throw new Error('components.json: nenhum objeto JSON encontrado')
+    throw new Error('library.json: nenhum objeto JSON encontrado')
   }
 
   const components = JSON.parse(docs[0]) as Record<string, Record<string, unknown>>

@@ -1,0 +1,43 @@
+# Editor de arquitetura de sistemas mecatrônicos (mecha-arch).
+#
+#   docker compose up          sobe em http://localhost:5180
+#   docker compose up -d       em segundo plano
+#   docker compose down        para
+#   docker compose build       reconstroi apos mexer no package.json
+#
+# A aplicação e auto-contida: o codigo e os dados (data/) vivem nesta pasta.
+# Derrubar o container nao perde nada.
+
+services:
+  mecha-arch:
+    build:
+      context: .
+    container_name: mecha-arch
+    ports:
+      - "5180:5180"
+    volumes:
+      # O codigo do app, para editar no Mac e ver o HMR recarregar. Os dados do
+      # projeto (data/) tambem vivem aqui e sao gravados de volta pelo endpoint
+      # /api/save.
+      - .:/app
+
+      # Mascara o node_modules do host (binarios do macOS) com o que foi
+      # instalado na imagem (linux/arm64). Sem isso o Vite nao sobe.
+      - mecha-node-modules:/app/node_modules
+
+    environment:
+      # Bind mount do macOS nao entrega eventos de inotify: o watcher do Vite
+      # precisa de polling para enxergar as edicoes feitas no editor.
+      MECHA_POLL: "1"
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5180/api/data"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+    restart: unless-stopped
+
+volumes:
+  mecha-node-modules:

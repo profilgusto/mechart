@@ -3,7 +3,7 @@
 # para o disco do Mac.
 FROM node:24-alpine
 
-WORKDIR /projeto/karu-arch
+WORKDIR /app
 
 # As dependencias sao instaladas DENTRO da imagem (binarios linux/arm64).
 # O node_modules do host, com binarios do macOS, e mascarado por um volume
@@ -11,7 +11,7 @@ WORKDIR /projeto/karu-arch
 COPY package.json package-lock.json* ./
 RUN npm ci || npm install
 
-ENV KARU_POLL=1
+ENV MECHA_POLL=1
 EXPOSE 5180
 
 CMD ["npm", "run", "dev"]

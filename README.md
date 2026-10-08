@@ -1,12 +1,18 @@
-# karu-arch
+# mecha-arch
 
-Editor visual da arquitetura do karu-un: a biblioteca de componentes vira caixinhas,
-você monta o diagrama de blocos ligando as portas, e as ligações são verificadas
-contra as restrições reais de alimentação e comunicação de cada peça.
+Editor visual da arquitetura de sistemas mecatrônicos: a biblioteca de componentes
+vira caixinhas, você monta o diagrama de blocos ligando as portas, e as ligações
+são verificadas contra as restrições reais de alimentação e comunicação de cada peça.
+
+O projeto nasceu para o robô karu-un, mas a aplicação é **auto-contida e genérica**:
+o catálogo (`data/library.json`) e as portas (`data/ports.json`) são apenas dados.
+O exemplo do karu-un vem embutido e é o projeto aberto por padrão.
 
 ## Como rodar
 
-Com Docker, a partir da raiz do projeto (um nível acima deste diretório):
+A aplicação é auto-contida — rode os comandos **a partir desta pasta**.
+
+Com Docker:
 
 ```sh
 docker compose up        # http://localhost:5180 · Ctrl+C para parar
@@ -27,30 +33,30 @@ entre eles à vontade — só não rode os dois ao mesmo tempo, porque disputam 
 porta 5180.
 
 > **Ao criar um arquivo `.ts` novo, reinicie o container** (`docker compose restart
-> karu-arch`). O watcher do Vite sobre bind mount do macOS acompanha edições em
+> mecha-arch`). O watcher do Vite sobre bind mount do macOS acompanha edições em
 > arquivos existentes, mas pode não notar arquivos criados depois que o servidor
 > subiu — e aí ele continua servindo a versão antiga em silêncio, sem erro nenhum.
 
 ## Onde ficam os dados
 
-Nada de valor mora dentro do container. Os três arquivos ficam no Mac e são
-montados para dentro dele; `docker compose down` não perde nada. O
-`components.json` entra montado como **somente leitura** — nem um bug consegue
-escrever nele.
+Os dados vivem dentro da aplicação, em `data/`, e são versionados junto com o
+código. Nada de valor mora dentro do container; `docker compose down` não perde
+nada. O `library.json` é lido pelo app mas nunca escrito por ele — nem um bug
+consegue alterá-lo.
 
 | Arquivo | Papel |
 |---|---|
-| `../components.json` | Ficha de datasheet. **Somente leitura** — o app nunca escreve nele. |
-| `../arquitetura/ports.json` | Portas de cada componente (energia e dados), escritas à mão. |
-| `../arquitetura/diagrama.json` | O diagrama. Salvo automaticamente enquanto você edita. |
+| `data/library.json` | Catálogo de componentes. **Lido, nunca escrito** pelo app. |
+| `data/ports.json` | Portas de cada componente (energia e dados), escritas à mão. |
+| `data/diagram.json` | O diagrama. Salvo automaticamente enquanto você edita. |
 
-O `components.json` não é JSON válido — tem comentários `//` e dois objetos de topo
+O `library.json` não é JSON válido — tem comentários `//` e dois objetos de topo
 concatenados (componentes e, depois de `// units`, o glossário de unidades).
 `src/data/parse.ts` lida com isso; o arquivo continua no formato que você escreveu.
 
 ## ports.json
 
-Cada porta carrega um campo `src` apontando para o caminho no `components.json`
+Cada porta carrega um campo `src` apontando para o caminho no `library.json`
 de onde o valor saiu. Quando o dado não é publicado, a porta recebe `null` e um
 `note` explicando o que falta — o app mostra **"a confirmar"** e a validação
 responde **"não verificável"**, nunca "ok". É a regra do projeto ("só entram
@@ -58,7 +64,7 @@ valores confirmados") levada até o diagrama.
 
 Ajustes são declarados em `instance`:
 
-- `pack` — o bloco representa unidades arranjáveis. O `components.json` descreve
+- `pack` — o bloco representa unidades arranjáveis. O `library.json` descreve
   **uma** célula 18650; o pack real se descreve com *Em série (S)* e *Em paralelo
   (P)*. Um 3S2P é `series: 3, parallel: 2` — seis células.
 
@@ -68,7 +74,7 @@ Ajustes são declarados em `instance`:
 
   Os números de uma unidade ficam em `instance.unit`, com o campo de origem
   anotado — a capacidade usa `capacity.nominal-at-25c-typical`, porque é o que a
-  nota do `components.json` manda adotar como figura de projeto.
+  nota do `library.json` manda adotar como figura de projeto.
 - `adjustable` — a saída é regulada na montagem (o trimmer do MP1584EN). Declare a
   tensão em *Saída ajustada* para que as cargas sejam verificadas contra ela.
 - `selectableOutput` — a saída é fixa, escolhida na compra entre variantes (o

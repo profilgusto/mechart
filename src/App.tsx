@@ -14,8 +14,13 @@ import Inspector from './ui/Inspector'
 import Canvas from './ui/Canvas'
 import IssuePanel from './ui/IssuePanel'
 import Legend from './ui/legend'
+import { useResizable, useStoredFlag } from './ui/useResizable'
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
+
+/** Altura fixa da legenda (ver .legend em styles.css) — a barra de problemas
+ * flutua exatamente encostada nela, sem precisar medir nada em runtime. */
+const LEGEND_H = 33
 
 /**
  * Posicao para um no adicionado pelo botao. Vai para uma faixa livre abaixo de
@@ -56,7 +61,15 @@ export default function App() {
   /** Preferencia de visualizacao, lembrada neste navegador. */
   const [expanded, setExpanded] = useState(() => {
     try {
-      return localStorage.getItem('karu:expanded') === '1'
+      return localStorage.getItem('mecha:expanded') === '1'
+    } catch {
+      return false
+    }
+  })
+  /** Preferencia de card: id como titulo em vez do tipo level-0. */
+  const [idAsTitle, setIdAsTitle] = useState(() => {
+    try {
+      return localStorage.getItem('mecha:idAsTitle') === '1'
     } catch {
       return false
     }
@@ -69,6 +82,30 @@ export default function App() {
   const [disconnecting, setDisconnecting] = useState<string | null>(null)
   /** Recado curto na barra: por que a ligacao nao deu, ou o que foi criado. */
   const [flash, setFlash] = useState<{ tone: 'ok' | 'erro'; text: string } | null>(null)
+
+  /** Larguras/altura dos paineis, arrastaveis e lembradas neste navegador. */
+  const libWidth = useResizable({ storageKey: 'mecha:libWidth', initial: 260, min: 180, max: 480, axis: 'x' })
+  const inspWidth = useResizable({
+    storageKey: 'mecha:inspWidth',
+    initial: 340,
+    min: 260,
+    max: 560,
+    axis: 'x',
+    sign: -1,
+  })
+  const issuesHeight = useResizable({
+    storageKey: 'mecha:issuesHeight',
+    initial: 200,
+    min: 80,
+    max: 480,
+    axis: 'y',
+    sign: -1,
+  })
+
+  /** Cada painel pode ser escondido, sobrando so o botao-aba na borda. */
+  const [libCollapsed, setLibCollapsed] = useStoredFlag('mecha:libCollapsed')
+  const [inspCollapsed, setInspCollapsed] = useStoredFlag('mecha:inspCollapsed')
+  const [issuesCollapsed, setIssuesCollapsed] = useStoredFlag('mecha:issuesCollapsed')
 
   const loaded = useRef(false)
 
@@ -87,7 +124,7 @@ export default function App() {
       .catch((e: unknown) => setError(String(e)))
   }, [])
 
-  // Salva o diagrama em arquitetura/diagrama.json, com debounce.
+  // Salva o diagrama em data/diagram.json, com debounce.
   useEffect(() => {
     if (!loaded.current) return
     setSave('saving')
@@ -140,11 +177,19 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('karu:expanded', expanded ? '1' : '0')
+      localStorage.setItem('mecha:expanded', expanded ? '1' : '0')
     } catch {
       // modo privado: a preferencia simplesmente nao persiste
     }
   }, [expanded])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('mecha:idAsTitle', idAsTitle ? '1' : '0')
+    } catch {
+      // modo privado: a preferencia simplesmente nao persiste
+    }
+  }, [idAsTitle])
 
   useEffect(() => {
     if (!flash) return
@@ -272,7 +317,7 @@ export default function App() {
   )
 
   if (error) return <div className="center">Erro ao carregar o projeto: {error}</div>
-  if (!library) return <div className="center">Carregando components.json…</div>
+  if (!library) return <div className="center">Carregando library.json…</div>
 
   const primarySelectedId =
     selectedNodeIds.length > 0 ? selectedNodeIds[selectedNodeIds.length - 1] : null
@@ -285,21 +330,9 @@ export default function App() {
 
   return (
     <div className="app">
-      <LibraryPanel
-        components={library.components}
-        selectedId={libSelection}
-        onSelect={(id) => {
-          setLibSelection(id)
-          setSelectedNodeIds([])
-        }}
-        onAdd={(id) =>
-          addNode(id, nudgeClear(canvasCenter.current?.() ?? freeSpot(nodes), nodes))
-        }
-      />
-
-      <main className="main">
+      <main className="workspace">
         <header className="toolbar">
-          <strong>Karu-un · arquitetura</strong>
+          <strong>mecha-arch</strong>
           <div className="toolbar__modes" role="group" aria-label="Modo de visualização">
             <button
               type="button"
@@ -319,6 +352,25 @@ export default function App() {
             </button>
           </div>
 
+          <div className="toolbar__modes" role="group" aria-label="Nome principal do card">
+            <button
+              type="button"
+              className={`mode${!idAsTitle ? ' mode--on' : ''}`}
+              aria-pressed={!idAsTitle}
+              onClick={() => setIdAsTitle(false)}
+            >
+              tipo
+            </button>
+            <button
+              type="button"
+              className={`mode${idAsTitle ? ' mode--on' : ''}`}
+              aria-pressed={idAsTitle}
+              onClick={() => setIdAsTitle(true)}
+            >
+              id
+            </button>
+          </div>
+
           <span className={`toolbar__hint${flash ? ` toolbar__hint--${flash.tone}` : ''}`}>
             {flash
               ? flash.text
@@ -330,7 +382,7 @@ export default function App() {
             {save === 'saving'
               ? 'salvando…'
               : save === 'saved'
-                ? 'salvo em arquitetura/diagrama.json'
+                ? 'salvo em data/diagram.json'
                 : save === 'error'
                   ? 'falha ao salvar'
                   : ''}
@@ -346,6 +398,7 @@ export default function App() {
             selectedNodeIds={selectedNodeIds}
             connectFrom={connectFrom}
             expanded={expanded}
+            idAsTitle={idAsTitle}
             onNodesChange={setNodes}
             onSelectionChange={(ids) => {
               syncSelection(ids)
@@ -364,10 +417,115 @@ export default function App() {
             centerRef={canvasCenter}
           />
         </ReactFlowProvider>
-
-        <Legend library={library} nodes={nodes} edges={edges} />
-        <IssuePanel issues={issues} onFocus={selectOnly} />
       </main>
+
+      <Legend library={library} nodes={nodes} edges={edges} />
+
+      <div
+        className={`overlay-panel overlay-panel--left${libCollapsed ? ' overlay-panel--collapsed' : ''}`}
+        style={{ width: libWidth.size }}
+        inert={libCollapsed || undefined}
+      >
+        <LibraryPanel
+          components={library.components}
+          selectedId={libSelection}
+          onSelect={(id) => {
+            setLibSelection(id)
+            setSelectedNodeIds([])
+          }}
+          onAdd={(id) =>
+            addNode(id, nudgeClear(canvasCenter.current?.() ?? freeSpot(nodes), nodes))
+          }
+        />
+      </div>
+      {!libCollapsed && (
+        <div
+          className="resize-handle resize-handle--v"
+          style={{ left: libWidth.size }}
+          role="separator"
+          aria-orientation="vertical"
+          onPointerDown={libWidth.onPointerDown}
+          onDoubleClick={libWidth.reset}
+        />
+      )}
+      <button
+        type="button"
+        className="panel-tab panel-tab--left"
+        style={{ left: libCollapsed ? 0 : libWidth.size + 6 }}
+        onClick={() => setLibCollapsed((v) => !v)}
+        aria-label={libCollapsed ? 'Mostrar biblioteca' : 'Esconder biblioteca'}
+        title={libCollapsed ? 'Mostrar biblioteca' : 'Esconder biblioteca'}
+      >
+        {libCollapsed ? '›' : '‹'}
+      </button>
+
+      <div
+        className={`overlay-panel overlay-panel--right${inspCollapsed ? ' overlay-panel--collapsed' : ''}`}
+        style={{ width: inspWidth.size }}
+        inert={inspCollapsed || undefined}
+      >
+        <Inspector
+          component={inspected}
+          units={library.units}
+          node={inspectedNode}
+          onNodeChange={
+            inspectedNode
+              ? (patch) =>
+                  setNodes((prev) =>
+                    prev.map((n) => (n.id === inspectedNode.id ? { ...n, ...patch } : n)),
+                  )
+              : undefined
+          }
+        />
+      </div>
+      {!inspCollapsed && (
+        <div
+          className="resize-handle resize-handle--v"
+          style={{ right: inspWidth.size }}
+          role="separator"
+          aria-orientation="vertical"
+          onPointerDown={inspWidth.onPointerDown}
+          onDoubleClick={inspWidth.reset}
+        />
+      )}
+      <button
+        type="button"
+        className="panel-tab panel-tab--right"
+        style={{ right: inspCollapsed ? 0 : inspWidth.size + 6 }}
+        onClick={() => setInspCollapsed((v) => !v)}
+        aria-label={inspCollapsed ? 'Mostrar inspetor' : 'Esconder inspetor'}
+        title={inspCollapsed ? 'Mostrar inspetor' : 'Esconder inspetor'}
+      >
+        {inspCollapsed ? '‹' : '›'}
+      </button>
+
+      <div
+        className={`overlay-panel overlay-panel--bottom${issuesCollapsed ? ' overlay-panel--collapsed' : ''}`}
+        style={{ height: issuesHeight.size }}
+        inert={issuesCollapsed || undefined}
+      >
+        <IssuePanel issues={issues} onFocus={selectOnly} />
+      </div>
+      {!issuesCollapsed && (
+        <div
+          className="resize-handle resize-handle--h"
+          style={{ bottom: LEGEND_H + issuesHeight.size }}
+          role="separator"
+          aria-orientation="horizontal"
+          onPointerDown={issuesHeight.onPointerDown}
+          onDoubleClick={issuesHeight.reset}
+        />
+      )}
+      <button
+        type="button"
+        className="panel-tab panel-tab--bottom"
+        style={{ bottom: LEGEND_H + (issuesCollapsed ? 0 : issuesHeight.size) }}
+        onClick={() => setIssuesCollapsed((v) => !v)}
+        aria-label={issuesCollapsed ? 'Mostrar problemas' : 'Esconder problemas'}
+        title={issuesCollapsed ? 'Mostrar problemas' : 'Esconder problemas'}
+      >
+        {issuesCollapsed ? '▴' : '▾'}
+      </button>
 
       {choices ? (
         <ConnectionModal
@@ -388,20 +546,6 @@ export default function App() {
           onCancel={cancelDisconnect}
         />
       ) : null}
-
-      <Inspector
-        component={inspected}
-        units={library.units}
-        node={inspectedNode}
-        onNodeChange={
-          inspectedNode
-            ? (patch) =>
-                setNodes((prev) =>
-                  prev.map((n) => (n.id === inspectedNode.id ? { ...n, ...patch } : n)),
-                )
-            : undefined
-        }
-      />
     </div>
   )
 }
