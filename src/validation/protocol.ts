@@ -64,10 +64,17 @@ export function checkProtocol(
           edgeIds: [edge.id],
         })
       } else if (la == null || lb == null) {
+        const ref = (e: typeof from) => portRef(e.node, e.component, e.port)
+        const faltando =
+          la == null && lb == null
+            ? `${ref(from)} e ${ref(to)}`
+            : la == null
+              ? ref(from)
+              : ref(to)
         issues.push({
           level: 'unverifiable',
           rule: 'protocol',
-          message: `${portRef(from.node, from.component, from.port)} → ${portRef(to.node, to.component, to.port)}: nível lógico não confirmado em uma das pontas.`,
+          message: `${portRef(from.node, from.component, from.port)} → ${portRef(to.node, to.component, to.port)}: não dá para verificar o nível lógico — falta level_v em ${faltando}.`,
           nodeIds: [from.node.id, to.node.id],
           edgeIds: [edge.id],
         })

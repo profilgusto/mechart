@@ -77,6 +77,14 @@ export default function App() {
       return false
     }
   })
+  /** Forma de visualizacao: comum ou analise de potencia. */
+  const [powerView, setPowerView] = useState(() => {
+    try {
+      return localStorage.getItem('mechart:view') === 'power'
+    } catch {
+      return false
+    }
+  })
   /** Preferencia de card: id como titulo em vez do tipo level-0. */
   const [idAsTitle, setIdAsTitle] = useState(() => {
     try {
@@ -228,6 +236,14 @@ export default function App() {
       // modo privado: a preferencia simplesmente nao persiste
     }
   }, [expanded])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('mechart:view', powerView ? 'power' : 'common')
+    } catch {
+      // modo privado: a preferencia simplesmente nao persiste
+    }
+  }, [powerView])
 
   useEffect(() => {
     try {
@@ -496,11 +512,32 @@ export default function App() {
             onLoadFile={requestLoadProject}
             onDownload={downloadProject}
           />
+          <div className="toolbar__modes" role="group" aria-label="Forma de visualização">
+            <button
+              type="button"
+              className={`mode${!powerView ? ' mode--on' : ''}`}
+              aria-pressed={!powerView}
+              data-tip="visão comum — arquitetura, protocolos e tensões"
+              onClick={() => setPowerView(false)}
+            >
+              comum
+            </button>
+            <button
+              type="button"
+              className={`mode${powerView ? ' mode--on' : ''}`}
+              aria-pressed={powerView}
+              data-tip="visão de potência — papéis, correntes e limites"
+              onClick={() => setPowerView(true)}
+            >
+              potência
+            </button>
+          </div>
+
           <div className="toolbar__modes" role="group" aria-label="Modo de visualização">
             <button
               type="button"
-              className={`mode${!expanded ? ' mode--on' : ''}`}
-              aria-pressed={!expanded}
+              className={`mode${!expanded || powerView ? ' mode--on' : ''}`}
+              aria-pressed={!expanded || powerView}
               data-tip="visão em blocos — card compacto, sem os condutores"
               onClick={() => setExpanded(false)}
             >
@@ -508,9 +545,14 @@ export default function App() {
             </button>
             <button
               type="button"
-              className={`mode${expanded ? ' mode--on' : ''}`}
-              aria-pressed={expanded}
-              data-tip="visão em condutores — abre os pinos e as ligações"
+              className={`mode${expanded && !powerView ? ' mode--on' : ''}`}
+              aria-pressed={expanded && !powerView}
+              disabled={powerView}
+              data-tip={
+                powerView
+                  ? 'indisponível na visão de potência — as linhas são sempre únicas'
+                  : 'visão em condutores — abre os pinos e as ligações'
+              }
               onClick={() => setExpanded(true)}
             >
               condutores
@@ -559,7 +601,8 @@ export default function App() {
               onClearIssueFocus={clearIssueFocus}
               selectedNodeIds={selectedNodeIds}
               connectFrom={connectFrom}
-              expanded={expanded}
+              expanded={expanded && !powerView}
+              powerView={powerView}
               idAsTitle={idAsTitle}
               onNodesChange={setNodes}
               onSelectionChange={(ids) => {
@@ -700,6 +743,7 @@ export default function App() {
             setActiveIssue(null)
           }}
           active={activeIssue}
+          selectedNodeIds={selectedNodeIds}
           onFocus={(issue) => {
             setSelectedNodeIds([])
             setActiveIssue(issue)

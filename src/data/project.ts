@@ -41,6 +41,7 @@ function asNode(raw: unknown, i: number): ArchNode | string {
   if (isNum(o.parallel)) node.parallel = o.parallel
   if (isNum(o.setVoltage)) node.setVoltage = o.setVoltage
   if (isNum(o.setCurrent)) node.setCurrent = o.setCurrent
+  if (o.off === true) node.off = true
   return node
 }
 

@@ -28,6 +28,11 @@ export type ArchNode = {
    * usuario vai ligar, entao fica na instancia e nao no arquivo do componente.
    */
   setCurrent?: number
+  /**
+   * Fonte ativa desligada na visao de potencia: nao injeta tensao nem corrente, e
+   * o calculo refaz de onde a energia viria (o carregador no lugar da bateria).
+   */
+  off?: boolean
 }
 
 export type ArchEdge = {

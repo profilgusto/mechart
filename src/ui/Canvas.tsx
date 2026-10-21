@@ -15,6 +15,7 @@ import '@xyflow/react/dist/style.css'
 import type { Component, Issue, Library } from '../model/types'
 import type { ArchEdge, ArchNode } from '../model/graph'
 import { handleId, nodeLabel, packTotals, effectiveVoltage, resolveEdge } from '../model/graph'
+import { computePower, formatTriple } from '../model/power'
 import { formatRangeCompact, rangeBounds } from '../data/normalize'
 import { expandEdge, uartInstancesOf } from '../model/pins'
 import ComponentNode, { type ComponentFlowNode } from './ComponentNode'
@@ -86,6 +87,7 @@ export default function Canvas({
   selectedNodeIds,
   connectFrom,
   expanded,
+  powerView,
   idAsTitle,
   onNodesChange,
   onSelectionChange,
@@ -113,6 +115,8 @@ export default function Canvas({
   connectFrom: string | null
   /** Modo expandido: cada ligacao abre nos condutores que ela representa. */
   expanded: boolean
+  /** Visao de potencia: cards por papel, linhas unicas com a corrente de cada uma. */
+  powerView: boolean
   /** Card mostra o id do componente como titulo, em vez do tipo level-0. */
   idAsTitle: boolean
   onNodesChange: (next: ArchNode[]) => void
@@ -136,7 +140,7 @@ export default function Canvas({
   insets: { left: number; right: number; bottom: number }
 }) {
   const wrapper = useRef<HTMLDivElement>(null)
-  const { screenToFlowPosition, setViewport, getNodesBounds, zoomIn, zoomOut, fitView } = useReactFlow()
+  const { screenToFlowPosition, setViewport, getNodesBounds, zoomIn, zoomOut } = useReactFlow()
   
   // Estado interno do ReactFlow para posições durante drag
   const [internalNodes, setInternalNodes] = useState<ComponentFlowNode[]>([])
@@ -207,18 +211,14 @@ export default function Canvas({
     return { nodes: keep, edges: keepEdges }
   }, [issueFocus, selectedNodeIds, edges])
 
-  // Centraliza o bounding box dos blocos envolvidos, fora da area dos paineis.
-  useEffect(() => {
-    if (!issueFocus || !focus) return
-    const targets = [...focus.nodes].filter((id) => nodes.some((n) => n.id === id))
-    if (targets.length === 0) return
-    const bounds = getNodesBounds(targets)
+  /** Enquadra os blocos na area livre do canvas, descontando as barras laterais e a inferior. */
+  const frameNodes = (ids: string[], pad: number, maxZoom: number) => {
     const rect = wrapper.current?.getBoundingClientRect()
-    if (!rect) return
-    const pad = 60
+    if (!rect || ids.length === 0) return
+    const bounds = getNodesBounds(ids)
     const availW = Math.max(rect.width - insets.left - insets.right - pad * 2, 100)
     const availH = Math.max(rect.height - insets.bottom - pad * 2, 100)
-    const zoom = Math.min(availW / Math.max(bounds.width, 1), availH / Math.max(bounds.height, 1), 1.2)
+    const zoom = Math.min(availW / Math.max(bounds.width, 1), availH / Math.max(bounds.height, 1), maxZoom)
     const cx = insets.left + pad + availW / 2
     const cy = pad + availH / 2
     void setViewport(
@@ -229,14 +229,37 @@ export default function Canvas({
       },
       { duration: 400 },
     )
+  }
+
+  // Centraliza o bounding box dos blocos envolvidos, fora da area dos paineis.
+  useEffect(() => {
+    if (!issueFocus || !focus) return
+    const targets = [...focus.nodes].filter((id) => nodes.some((n) => n.id === id))
+    if (targets.length === 0) return
+    frameNodes(targets, 60, 1.2)
     // So reenquadra quando o aviso muda, nao a cada edicao ou resize de painel.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [issueFocus])
+
+  /** Liga/desliga uma fonte ativa: o calculo de potencia refaz de onde a energia vem. */
+  const onTogglePower = useCallback(
+    (nodeId: string) =>
+      onNodesChange(
+        nodes.map((n) => (n.id === nodeId ? { ...n, off: n.off ? undefined : true } : n)),
+      ),
+    [nodes, onNodesChange],
+  )
+
+  const power = useMemo(
+    () => (powerView ? computePower(library, nodes, edges) : null),
+    [powerView, library, nodes, edges],
+  )
 
   useEffect(() => {
     const ids = new Set(selectedNodeIds)
     const multi = selectedNodeIds.length > 1
     const incoming = incomingVoltages(library, nodes, edges)
+    const nodePower = power?.nodes ?? {}
     const newNodes = nodes.flatMap((n) => {
       const component = library.byId[n.componentId]
       if (!component) return []
@@ -267,6 +290,7 @@ export default function Canvas({
             incoming: incoming[n.id] ?? {},
             uartInstances,
             expanded,
+            power: powerView ? (nodePower[n.id] ?? null) : null,
             idAsTitle,
             node: n,
             connecting: connectFrom !== null,
@@ -276,16 +300,51 @@ export default function Canvas({
             onCancelConnect,
             onStartDisconnect,
             onRename,
+            onTogglePower,
           },
         },
       ]
     })
     setInternalNodes(newNodes)
-  }, [nodes, edges, library, selectedNodeIds, focus, worst, connectFrom, expanded, idAsTitle, onStartConnect, onCancelConnect, onStartDisconnect, onRename])
+  }, [nodes, edges, library, selectedNodeIds, focus, worst, connectFrom, expanded, powerView, power, idAsTitle, onStartConnect, onCancelConnect, onStartDisconnect, onRename, onTogglePower])
 
   const flowEdges: Edge[] = useMemo(
     () =>
-      edges.flatMap((e) => {
+      edges.flatMap<Edge>((e) => {
+        // Visao de potencia: so as ligacoes que carregam energia, uma linha cada,
+        // com a seta no sentido da corrente e a corrente num bullet no meio.
+        if (power) {
+          const flow = power.edges[e.id]
+          const dir = power.direction[e.id]
+          if (!flow || !dir) return []
+          const level = worst.edgeLevel[e.id]
+          const color =
+            level === 'error' ? '#d14343' : level === 'warning' ? '#c98a12' : '#7a7a7a'
+          return [
+            {
+              id: e.id,
+              className: [
+                focus && !focus.edges.has(e.id) ? 'dimmed' : '',
+                flow.idle || flow.dead ? 'edge--idle' : '',
+              ]
+                .filter(Boolean)
+                .join(' ') || undefined,
+              source: dir.from.node.id,
+              target: dir.to.node.id,
+              sourceHandle: handleId('out', dir.from.port.id),
+              targetHandle: handleId('in', dir.to.port.id),
+              label: formatTriple(flow),
+              labelStyle: { fontSize: 10, fontWeight: 700, fill: 'var(--text)' },
+              labelBgStyle: { fill: 'var(--panel)', stroke: color, strokeWidth: 1.2 },
+              labelBgPadding: [6, 3] as [number, number],
+              labelBgBorderRadius: 999,
+              markerEnd: { type: MarkerType.ArrowClosed, color, width: 14, height: 14 },
+              style: { stroke: color, strokeWidth: 2.5, strokeDasharray: flow.idle || flow.dead ? '5 4' : undefined },
+            },
+          ]
+        }
+
+
         const srcComp = library.byId[nodes.find((n) => n.id === e.source)?.componentId ?? '']
         const port = srcComp?.ports.find((p) => p.id === e.sourcePort)
         const isPower = port?.kind === 'power'
@@ -369,7 +428,7 @@ export default function Canvas({
           },
         ]
       }),
-    [edges, nodes, library, worst, expanded, focus],
+    [edges, nodes, library, worst, expanded, focus, power],
   )
 
   /**
@@ -464,7 +523,7 @@ export default function Canvas({
         >
           <button type="button" title="Menos zoom" aria-label="Menos zoom" onClick={() => zoomOut({ duration: 150 })}>−</button>
           <button type="button" title="Mais zoom" aria-label="Mais zoom" onClick={() => zoomIn({ duration: 150 })}>+</button>
-          <button type="button" title="Enquadrar todos os componentes" aria-label="Enquadrar todos os componentes" onClick={() => fitView({ padding: 0.15, duration: 200 })}>
+          <button type="button" title="Enquadrar todos os componentes" aria-label="Enquadrar todos os componentes" onClick={() => frameNodes(nodes.map((n) => n.id), 40, 1)}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9" />
             </svg>

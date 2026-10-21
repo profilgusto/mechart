@@ -27,6 +27,7 @@ export default function IssuePanel({
   showIgnored,
   onIgnore,
   onToggleIgnored,
+  selectedNodeIds,
 }: {
   issues: Issue[]
   active: Issue | null
@@ -35,6 +36,7 @@ export default function IssuePanel({
   showIgnored: boolean
   onIgnore: (issue: Issue) => void
   onToggleIgnored: () => void
+  selectedNodeIds: string[]
 }) {
   const [confirm, setConfirm] = useState<{ issue: Issue; x: number; y: number } | null>(null)
 
@@ -48,7 +50,15 @@ export default function IssuePanel({
   const isIgnored = (i: Issue) => ignored.has(issueKey(i))
   const ignoredCount = issues.filter(isIgnored).length
   const live = issues.filter((i) => !isIgnored(i))
-  const shown = showIgnored ? issues : live
+  const visible = showIgnored ? issues : live
+
+  // Com componentes selecionados, as mensagens que os envolvem sobem ao topo
+  // (ordem original preservada) e as demais ficam esmaecidas.
+  const hasSelection = selectedNodeIds.length > 0
+  const isRelated = (i: Issue) => !!i.nodeIds?.some((id) => selectedNodeIds.includes(id))
+  const shown = hasSelection
+    ? [...visible.filter(isRelated), ...visible.filter((i) => !isRelated(i))]
+    : visible
 
   const counts = {
     error: live.filter((i) => i.level === 'error').length,
@@ -88,12 +98,13 @@ export default function IssuePanel({
         {shown.map((issue) => {
           const key = issueKey(issue)
           const off = ignored.has(key)
+          const dim = hasSelection && !isRelated(issue)
           const selected = issue === active || (active != null && issueKey(active) === key)
           return (
             <li key={key} className="issues__item">
               <button
                 type="button"
-                className={`issue issue--${issue.level}${selected ? ' issue--active' : ''}${off ? ' issue--ignored' : ''}`}
+                className={`issue issue--${issue.level}${selected ? ' issue--active' : ''}${off ? ' issue--ignored' : ''}${dim ? ' issue--dim' : ''}`}
                 aria-pressed={selected}
                 onClick={() => (issue.nodeIds?.length || issue.edgeIds?.length) && onFocus(issue)}
               >

@@ -151,6 +151,7 @@ function PortRow({ port }: { port: Port }) {
 
   if (port.kind === 'power') {
     spec.push(port.v ? formatRange(toRange({ ...port.v }), 'V') : 'tensão a confirmar')
+    if (port.draw_min_mA != null) spec.push(`mínimo ${port.draw_min_mA} mA`)
     if (port.draw_mA != null) spec.push(`consome ${port.draw_mA} mA`)
     else if (port.dir === 'sink') spec.push('consumo a confirmar')
     if (port.peak_mA != null) spec.push(`pico/exigido ${port.peak_mA} mA`)

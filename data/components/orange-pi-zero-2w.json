@@ -13,6 +13,7 @@
 			"v": {
 				"nom": 5
 			},
+			"draw_min_mA": 240,
 			"draw_mA": 440,
 			"peak_mA": 2000,
 			"required": true,
@@ -41,6 +42,7 @@
 			"v": {
 				"nom": 5
 			},
+			"draw_min_mA": 240,
 			"draw_mA": 440,
 			"peak_mA": 2000,
 			"required": true,

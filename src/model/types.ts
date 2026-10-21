@@ -37,6 +37,8 @@ export type Port = {
   v?: Range | null
   /** Portas de energia sink (ou USB device, ver `vbus`): consumo tipico em mA. */
   draw_mA?: number | null
+  /** Portas de energia sink: consumo minimo (repouso, sem carga) em mA. `draw_mA` e o nominal e `peak_mA` o pico. */
+  draw_min_mA?: number | null
   /** Portas de energia sink: pico ou corrente minima exigida da fonte, em mA. */
   peak_mA?: number | null
   /** Portas de energia source (ou USB host, ver `vbus`): corrente maxima entregue em mA. */

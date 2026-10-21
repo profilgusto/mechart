@@ -749,7 +749,7 @@ body {
   padding: 10px 16px 14px;
 }
 .issues--empty { color: var(--muted); font-size: 12px; padding: 12px 16px; }
-.issues__head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.issues__head { position: relative; z-index: 5; display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
 .issues__title {
   margin: 0 8px 0 0;
   font-size: 12px;
@@ -784,7 +784,7 @@ body {
   content: '• ' attr(data-tip);
   position: absolute;
   left: 0;
-  bottom: calc(100% + 6px);
+  top: calc(100% + 6px);
   white-space: nowrap;
   padding: 3px 8px;
   font-size: 11px;
@@ -810,6 +810,8 @@ body {
 .issues__empty { color: var(--muted); font-size: 12px; padding: 4px 0; }
 .issues__item { position: relative; }
 .issue--ignored { opacity: 0.55; }
+.issue--dim { opacity: 0.35; }
+.issue--dim:hover { opacity: 0.8; }
 .issue__ignore {
   position: absolute;
   right: 8px;
@@ -1620,3 +1622,94 @@ body {
   transition: opacity 0.12s ease;
 }
 .node__pencil:hover::after { opacity: 1; }
+
+/* Botão desabilitado do seletor duplo (condutores na visão de potência). */
+.mode:disabled { opacity: 0.45; cursor: default; }
+
+/* ---- Visão de potência ---------------------------------------------------
+   Cabeçalho tingido pela cor do papel (ativo amarelo, passivo azul, serviço
+   cinza); `--cat` já vem do papel, definido em ComponentNode. */
+.node--pw .node__head {
+  background: color-mix(in srgb, var(--cat) 18%, var(--panel));
+  border-radius: 5px 5px 0 0;
+}
+
+/* Bullet de corrente na porta. */
+.prow__flow {
+  flex: none;
+  font-size: 9px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--role, var(--muted)) 60%, transparent);
+  border-radius: 999px;
+  padding: 0 6px;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+.prow__flow--zero { color: var(--muted); border-style: dashed; font-weight: 500; }
+.prow__kind--hidden { display: none; }
+
+/* Ramo ocioso (o carregador ao lado da bateria): fantasma, sem corrente. */
+.react-flow__edge.edge--idle { opacity: 0.55; }
+
+/* Rodapé do card: papel, o que recebe e o que fornece, com o limite. */
+.node__pwfoot {
+  display: grid;
+  gap: 2px;
+  padding: 5px 10px 6px;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 7px 7px;
+  background: color-mix(in srgb, var(--cat) 10%, var(--panel));
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.pwfoot__role {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cat);
+  filter: brightness(0.8);
+}
+.pwfoot__line { display: flex; justify-content: space-between; gap: 8px; }
+.pwfoot__label { color: var(--muted); }
+.pwfoot__val { font-weight: 700; color: var(--text); text-align: right; }
+.pwfoot__limit, .pwfoot__w { font-weight: 400; color: var(--muted); }
+.pwfoot__line--over .pwfoot__val, .pwfoot__line--over .pwfoot__limit { color: #d14343; }
+.pwfoot__none { color: var(--muted); font-style: italic; }
+
+/* Mínimo e pico, numa segunda linha quando diferem do nominal. */
+.pwfoot__line { flex-wrap: wrap; }
+.pwfoot__range { flex-basis: 100%; text-align: right; font-size: 9px; color: var(--muted); }
+.pwfoot__line--peak .pwfoot__range { color: #c98a12; font-weight: 700; }
+.pwfoot__line--over .pwfoot__range { color: #d14343; }
+
+/* Fonte ativa: interruptor no rodapé. Desligada (ou sem alimentação), o card esmaece. */
+.pwfoot__head { display: flex; align-items: center; justify-content: space-between; }
+.pwswitch {
+  flex: none;
+  position: relative;
+  width: 28px;
+  height: 15px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  cursor: pointer;
+}
+.pwswitch__knob {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.15s, background 0.15s;
+}
+.pwswitch--on { background: color-mix(in srgb, var(--cat) 55%, var(--panel)); border-color: var(--cat); }
+.pwswitch--on .pwswitch__knob { transform: translateX(13px); background: #fff; }
+.pwfoot__dead { color: #d14343; font-size: 9px; font-weight: 600; }
+.node--pw-off .node__head, .node--pw-off .node__ports { opacity: 0.55; }

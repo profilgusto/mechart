@@ -6,6 +6,16 @@ import { nodeLabel, handleId, rolesOf, roleOf, missingRequired, effectiveVoltage
 import { pinsOf, type UartInstance } from '../model/pins'
 import NodeIssueBadge from './NodeIssueBadge'
 import { getTypeHierarchy } from '../model/component-type'
+import {
+  POWER_ROLE_COLOR,
+  POWER_ROLE_LABEL,
+  formatCurrent,
+  formatTriple,
+  formatPower,
+  type Flow,
+  type NodePower,
+  type PortPower,
+} from '../model/power'
 
 export type ComponentNodeData = {
   component: Component
@@ -27,6 +37,8 @@ export type ComponentNodeData = {
   multiSelected: boolean
   /** Modo expandido: as portas ligadas abrem nos seus condutores. */
   expanded: boolean
+  /** Visao de potencia: papel do bloco e a corrente em cada porta. Nulo na visao comum. */
+  power: NodePower | null
   /** Card mostra o id do componente como titulo, em vez do tipo level-0. */
   idAsTitle: boolean
   node: ArchNode
@@ -34,6 +46,8 @@ export type ComponentNodeData = {
   onCancelConnect: () => void
   onStartDisconnect: (nodeId: string) => void
   onRename: (nodeId: string, label: string) => void
+  /** Liga/desliga uma fonte ativa (visao de potencia). */
+  onTogglePower: (nodeId: string) => void
 }
 
 export type ComponentFlowNode = Node<ComponentNodeData, 'component'>
@@ -131,6 +145,81 @@ function UartInstanceRows({ port, instances }: { port: Port; instances: UartInst
   )
 }
 
+/** Bullet com a corrente que passa pela porta (entra pela esquerda, sai pela direita). */
+function FlowBullet({ flow, dir }: { flow: Flow; dir: 'in' | 'out' }) {
+  const w = formatPower(flow.mW, flow.partial)
+  return (
+    <span
+      className={`prow__flow prow__flow--${dir}${flow.mA === 0 && !flow.partial ? ' prow__flow--zero' : ''}`}
+      title={`${dir === 'in' ? 'corrente que entra' : 'corrente que sai'} por esta porta (nominal)${w ? ` · ${w}` : ''}\nmín / nominal / pico: ${formatTriple(flow)}`}
+    >
+      {dir === 'in' ? '← ' : ''}
+      {formatCurrent(flow.mA, flow.partial)}
+      {dir === 'out' ? ' →' : ''}
+    </span>
+  )
+}
+
+/** Rodape da visao de potencia: o que o bloco recebe e o que entrega, com o limite quando existe. */
+function PowerFooter({ power, off, onToggle }: { power: NodePower; off: boolean; onToggle: () => void }) {
+  const { totalIn, totalOut } = power
+  const line = (label: string, f: Flow, limit?: number | null) => {
+    const over = limit != null && f.mA > limit
+    const overPeak = !over && limit != null && (f.peak?.mA ?? 0) > limit
+    const w = formatPower(f.mW, f.partial)
+    const spread = (f.min && f.min.mA !== f.mA) || (f.peak && f.peak.mA !== f.mA)
+    return (
+      <div className={`pwfoot__line${over ? ' pwfoot__line--over' : overPeak ? ' pwfoot__line--peak' : ''}`} key={label}>
+        <span className="pwfoot__label">{label}</span>
+        <span className="pwfoot__val">
+          {formatCurrent(f.mA, f.partial)}
+          {limit != null ? <span className="pwfoot__limit"> / {formatCurrent(limit)}</span> : null}
+          {w ? <span className="pwfoot__w"> · {w}</span> : null}
+        </span>
+        {spread ? (
+          <span className="pwfoot__range" title="corrente no consumo mínimo e no pico">
+            mín {formatCurrent(f.min?.mA ?? f.mA, f.min?.partial ?? f.partial)} · pico{' '}
+            {formatCurrent(f.peak?.mA ?? f.mA, f.peak?.partial ?? f.partial)}
+            {limit != null && f.peak ? ` / ${formatCurrent(limit)}` : ''}
+          </span>
+        ) : null}
+      </div>
+    )
+  }
+  return (
+    <div className="node__pwfoot">
+      <div className="pwfoot__head">
+        <span className="pwfoot__role">
+          {POWER_ROLE_LABEL[power.role]}
+          {power.role === 'active' && off ? ' · desligado' : ''}
+        </span>
+        {power.role === 'active' ? (
+          <button
+            type="button"
+            role="switch"
+            aria-checked={!off}
+            className={`pwswitch nodrag${off ? '' : ' pwswitch--on'}`}
+            title={off ? 'Ligar: volta a injetar tensão e corrente' : 'Desligar: refaz o cálculo sem esta fonte'}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggle()
+            }}
+          >
+            <span className="pwswitch__knob" />
+          </button>
+        ) : null}
+      </div>
+      {power.role !== 'active' && !power.energized ? (
+        <span className="pwfoot__dead">sem alimentação — nenhuma fonte chega aqui</span>
+      ) : null}
+      {totalIn ? line('recebe', totalIn) : null}
+      {totalOut ? line('fornece', totalOut, totalOut.limit) : null}
+      {!totalIn && !totalOut ? <span className="pwfoot__none">sem ligação de energia</span> : null}
+    </div>
+  )
+}
+
 function PortRow({
   port,
   ligada,
@@ -140,6 +229,7 @@ function PortRow({
   inVolt,
   inRange,
   inLevel,
+  flow,
   showHandle = true,
 }: {
   port: Port
@@ -155,6 +245,8 @@ function PortRow({
   inRange?: boolean
   /** 'bad' se não cabe na entrada; 'warn' se a fonte pode sair da faixa. */
   inLevel?: 'bad' | 'warn' | null
+  /** Visao de potencia: corrente que passa pela porta. Substitui o selo entrada/saida. */
+  flow?: PortPower | null
   /**
    * false no modo condutores quando esta porta abre em pinos/instâncias
    * abaixo: o quadradinho da porta pareceria uma ligação em si, enquanto as
@@ -206,7 +298,13 @@ function PortRow({
           {volt}
         </span>
       ) : null}
-      <span className="prow__kind">
+      {flow && !falta ? (
+        <>
+          {flow.in ? <FlowBullet flow={flow.in} dir="in" /> : null}
+          {flow.out ? <FlowBullet flow={flow.out} dir="out" /> : null}
+        </>
+      ) : null}
+      <span className={`prow__kind${flow && !falta && (flow.in || flow.out) ? ' prow__kind--hidden' : ''}`}>
         {falta
           ? 'falta ligar'
           : port.kind === 'power'
@@ -243,10 +341,11 @@ export default function ComponentNode({ id, data, selected }: NodeProps<Componen
     isOrigin,
     multiSelected,
     expanded,
+    power,
     idAsTitle,
     node,
   } = data
-  const color = CATEGORY_COLOR[component.category]
+  const color = power ? POWER_ROLE_COLOR[power.role] : CATEGORY_COLOR[component.category]
   const name = nodeLabel(node, component)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
@@ -296,14 +395,20 @@ export default function ComponentNode({ id, data, selected }: NodeProps<Componen
 
   // Fechado, o bloco mostra so as portas em uso -- e o diagrama fica limpo.
   // Selecionado sozinho, mostra todas, para escolher a proxima ligacao.
+  // Na visao de potencia so as portas que carregam energia (inclui o VBUS do USB).
+  const relevantes = power
+    ? component.ports.filter((p) => p.kind === 'power' || p.vbus)
+    : component.ports
   const visiveis = single
-    ? component.ports
-    : component.ports.filter((p) => ligadas.has(p.id) || p.required)
-  const ocultas = component.ports.length - visiveis.length
+    ? relevantes
+    : relevantes.filter((p) => ligadas.has(p.id) || p.required)
+  const ocultas = relevantes.length - visiveis.length
 
   const classes = [
     'node',
     component.external ? 'node--external' : '',
+    power ? `node--pw node--pw-${power.role}` : '',
+    power && (node.off || (power.role !== 'active' && !power.energized)) ? 'node--pw-off' : '',
     selected ? 'node--selected' : '',
     level ? `node--${level}` : '',
     connecting && !isOrigin ? 'node--target' : '',
@@ -441,6 +546,7 @@ export default function ComponentNode({ id, data, selected }: NodeProps<Componen
                   inVolt={inc?.text}
                   inRange={inc?.range}
                   inLevel={inc?.level}
+                  flow={power?.ports[p.id] ?? null}
                   showHandle={!expanded || (!instances && !pins)}
                 />
                 {instances ? (
@@ -470,6 +576,8 @@ export default function ComponentNode({ id, data, selected }: NodeProps<Componen
           +{ocultas} {ocultas === 1 ? 'porta livre' : 'portas livres'} · clique para ver
         </div>
       ) : null}
+
+      {power ? <PowerFooter power={power} off={Boolean(node.off)} onToggle={() => data.onTogglePower(id)} /> : null}
     </div>
   )
 }

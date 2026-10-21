@@ -1,6 +1,6 @@
 import type { Issue, Library, Range } from '../model/types'
 import type { ArchEdge, ArchNode } from '../model/graph'
-import { resolveEdge, nodeLabel, portRef, effectiveVoltage } from '../model/graph'
+import { resolveEdge, portRef, effectiveVoltage } from '../model/graph'
 import { rangeBounds, formatRange } from '../data/normalize'
 
 const fmt = (r: Range | null | undefined) =>
@@ -24,8 +24,6 @@ export function checkVoltage(
     const { from, to } = r
     if (from.port.kind !== 'power' || to.port.kind !== 'power') continue
 
-    const a = nodeLabel(from.node, from.component)
-    const b = nodeLabel(to.node, to.component)
     const where = `${portRef(from.node, from.component, from.port)} → ${portRef(to.node, to.component, to.port)}`
 
     const srcV = effectiveVoltage(from.node, from.port)
@@ -34,11 +32,13 @@ export function checkVoltage(
     const dst = dstV ? rangeBounds(dstV) : null
 
     if (!src || !dst) {
-      const faltando = !src ? a : b
+      const faltando = !src
+        ? portRef(from.node, from.component, from.port)
+        : portRef(to.node, to.component, to.port)
       issues.push({
         level: 'unverifiable',
         rule: 'voltage',
-        message: `${where}: tensão não verificável — ${faltando} não tem faixa confirmada (${!src ? fmt(srcV) : fmt(dstV)}).`,
+        message: `${where}: tensão não verificável — ${faltando} não tem faixa de tensão confirmada (${!src ? fmt(srcV) : fmt(dstV)}).`,
         nodeIds: [from.node.id, to.node.id],
         edgeIds: [edge.id],
       })
