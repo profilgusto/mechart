@@ -129,6 +129,7 @@ export default function App() {
   /** Cada painel pode ser escondido, sobrando so o botao-aba na borda. */
   const [libCollapsed, setLibCollapsed] = useStoredFlag('mechart:libCollapsed')
   const [inspCollapsed, setInspCollapsed] = useStoredFlag('mechart:inspCollapsed')
+  const [inspHint, setInspHint] = useState(false)
   const [issuesCollapsed, setIssuesCollapsed] = useStoredFlag('mechart:issuesCollapsed')
 
   const [ignoredIssues, setIgnoredIssues] = useState<Set<string>>(new Set())
@@ -484,6 +485,18 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [downloadProject])
 
+  // Sem nada selecionado o inspetor fica recolhido (duplo clique num bloco o reabre).
+  const nothingSelected = selectedNodeIds.length === 0 && !libSelection
+  useEffect(() => {
+    if (nothingSelected) setInspCollapsed(true)
+  }, [nothingSelected, setInspCollapsed])
+
+  useEffect(() => {
+    if (!inspHint) return
+    const t = setTimeout(() => setInspHint(false), 4000)
+    return () => clearTimeout(t)
+  }, [inspHint])
+
   if (error) return <div className="center">Erro ao carregar o projeto: {error}</div>
   if (!library) return <div className="center">Carregando catálogo…</div>
 
@@ -713,11 +726,20 @@ export default function App() {
               onDoubleClick={inspWidth.reset}
             />
           )}
+          {inspHint && inspCollapsed && nothingSelected && (
+            <div className="panel-hint" role="status">
+              • Clique 2x sobre um componente para abrir seus parâmetros
+            </div>
+          )}
           <button
             type="button"
             className="panel-tab panel-tab--right"
             style={{ right: inspCollapsed ? 0 : inspWidth.size + 6 }}
-            onClick={() => setInspCollapsed((v) => !v)}
+            onClick={() => {
+              // Sem selecao nao ha o que mostrar: so explica como abrir.
+              if (inspCollapsed && nothingSelected) setInspHint(true)
+              else setInspCollapsed((v) => !v)
+            }}
             aria-label={inspCollapsed ? 'Mostrar inspetor' : 'Esconder inspetor'}
             title={inspCollapsed ? 'Mostrar inspetor' : 'Esconder inspetor'}
           >

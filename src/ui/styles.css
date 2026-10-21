@@ -1713,3 +1713,18 @@ body {
 .pwswitch--on .pwswitch__knob { transform: translateX(13px); background: #fff; }
 .pwfoot__dead { color: #d14343; font-size: 9px; font-weight: 600; }
 .node--pw-off .node__head, .node--pw-off .node__ports { opacity: 0.55; }
+
+.panel-hint {
+  position: fixed;
+  top: 64px;
+  right: 28px;
+  z-index: 12;
+  max-width: 260px;
+  padding: 8px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
