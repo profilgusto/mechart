@@ -1,0 +1,21 @@
+{
+	"schemaVersion": 1,
+	"id": "external-source",
+	"description": "Fronteira do projeto: alimentação que vem de fora do robô (fonte de bancada, carregador USB, banco de baterias). Não é uma peça do BOM — declare aqui a tensão e a corrente máximas no inspetor desta instância.",
+	"type": "Fonte externa",
+	"category": "external",
+	"external": true,
+	"ports": [
+		{
+			"id": "out",
+			"label": "Saída externa",
+			"kind": "power",
+			"dir": "source",
+			"v": null,
+			"supply_mA": null,
+			"count": 1,
+			"note": "tensão e corrente são do adapter ligado a esta fronteira; declare ambas no inspetor da instância",
+			"src": "fronteira do projeto — sem datasheet, valores declarados na instância"
+		}
+	]
+}

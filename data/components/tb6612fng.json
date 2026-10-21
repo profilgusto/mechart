@@ -1,0 +1,342 @@
+{
+	"schemaVersion": 1,
+	"id": "tb6612fng",
+	"description": "TB6612FNG dual DC motor driver breakout board (Toshiba TB6612FNG, SSOP24), headers pre-soldered",
+	"type": "motor-driver",
+	"category": "actuation",
+	"ports": [
+		{
+			"id": "vm",
+			"label": "VM (motores)",
+			"kind": "power",
+			"dir": "sink",
+			"v": {
+				"min": 4.5,
+				"nom": 5,
+				"max": 13.5
+			},
+			"required": true,
+			"count": 1,
+			"src": "motor-voltage",
+			"note": "máximo absoluto 15 V",
+			"pins": [
+				{
+					"id": "VM",
+					"signal": "pos"
+				},
+				{
+					"id": "GND",
+					"signal": "neg"
+				}
+			]
+		},
+		{
+			"id": "vcc",
+			"label": "VCC (lógica)",
+			"kind": "power",
+			"dir": "sink",
+			"v": {
+				"min": 2.7,
+				"nom": 3,
+				"max": 5.5
+			},
+			"draw_mA": 1.1,
+			"required": true,
+			"count": 1,
+			"src": "logic-voltage; logic-supply-current.typical",
+			"pins": [
+				{
+					"id": "VCC",
+					"signal": "pos"
+				},
+				{
+					"id": "GND",
+					"signal": "neg"
+				}
+			]
+		},
+		{
+			"id": "out-a",
+			"label": "AO1 / AO2",
+			"kind": "power",
+			"dir": "source",
+			"v": {
+				"min": 4.5,
+				"nom": 5,
+				"max": 13.5
+			},
+			"supply_mA": 1200,
+			"count": 1,
+			"src": "communications.output-pins; output-current.continuous-per-channel 1,2 A",
+			"note": "a saída segue a tensão em VM. Contínua real: 1,0 A com VM ≥ 5 V e 0,4 A com 4,5 ≤ VM < 5 V; pico 3,2 A por 10 ms",
+			"pins": [
+				{
+					"id": "AO1",
+					"signal": "pos"
+				},
+				{
+					"id": "AO2",
+					"signal": "neg"
+				}
+			]
+		},
+		{
+			"id": "out-b",
+			"label": "BO1 / BO2",
+			"kind": "power",
+			"dir": "source",
+			"v": {
+				"min": 4.5,
+				"nom": 5,
+				"max": 13.5
+			},
+			"supply_mA": 1200,
+			"count": 1,
+			"src": "communications.output-pins; output-current.continuous-per-channel 1,2 A",
+			"note": "a saída segue a tensão em VM",
+			"pins": [
+				{
+					"id": "BO1",
+					"signal": "pos"
+				},
+				{
+					"id": "BO2",
+					"signal": "neg"
+				}
+			]
+		},
+		{
+			"id": "pwm-a",
+			"label": "PWMA",
+			"kind": "data",
+			"dir": "in",
+			"protocol": "pwm",
+			"count": 1,
+			"src": "communications.control-pins[0]",
+			"note": "nível alto = Vcc × 0,7; pull-down interno de 200k; PWM até 100 kHz",
+			"pins": [
+				{
+					"id": "PWMA",
+					"signal": "pwm"
+				}
+			]
+		},
+		{
+			"id": "pwm-b",
+			"label": "PWMB",
+			"kind": "data",
+			"dir": "in",
+			"protocol": "pwm",
+			"count": 1,
+			"src": "communications.control-pins[3]",
+			"pins": [
+				{
+					"id": "PWMB",
+					"signal": "pwm"
+				}
+			]
+		},
+		{
+			"id": "dir-a",
+			"label": "AIN1 / AIN2",
+			"kind": "data",
+			"dir": "in",
+			"protocol": "gpio",
+			"count": 2,
+			"src": "communications.control-pins[1..2]",
+			"pins": [
+				{
+					"id": "AIN1",
+					"signal": "in1"
+				},
+				{
+					"id": "AIN2",
+					"signal": "in2"
+				}
+			]
+		},
+		{
+			"id": "dir-b",
+			"label": "BIN1 / BIN2",
+			"kind": "data",
+			"dir": "in",
+			"protocol": "gpio",
+			"count": 2,
+			"src": "communications.control-pins[4..5]",
+			"pins": [
+				{
+					"id": "BIN1",
+					"signal": "in1"
+				},
+				{
+					"id": "BIN2",
+					"signal": "in2"
+				}
+			]
+		},
+		{
+			"id": "stby",
+			"label": "STBY",
+			"kind": "data",
+			"dir": "in",
+			"protocol": "gpio",
+			"required": true,
+			"count": 1,
+			"src": "communications.control-pins[6]",
+			"note": "precisa estar alto para acionar; baixo coloca as saídas em alta impedância",
+			"pins": [
+				{
+					"id": "STBY",
+					"signal": "gpio"
+				}
+			]
+		}
+	],
+	"specs": {
+		"channels": 2,
+		"topology": "dual H-bridge, LD-MOS outputs",
+		"motor-voltage": {
+			"min": 4.5,
+			"nominal": 5,
+			"max": 13.5,
+			"note": "operating range; pin spec allows 2.5-13.5 V, absolute maximum 15 V"
+		},
+		"logic-voltage": {
+			"min": 2.7,
+			"nominal": 3,
+			"max": 5.5
+		},
+		"output-current": {
+			"continuous-per-channel": 1.2,
+			"peak-per-channel": 3.2,
+			"peak-note": "3.2 A for a single 10 ms pulse; 2 A for 20 ms pulses at duty <= 20%; 1.0 A max continuous when VM >= 5 V and 0.4 A when 4.5 V <= VM < 5 V"
+		},
+		"on-resistance": 0.5,
+		"pwm-frequency": {
+			"max": 100000
+		},
+		"logic-supply-current": {
+			"typical": 1.1,
+			"standby": 0.001,
+			"note": "1.1 mA typical at Vcc = 3 V, 1.5 mA at 5.5 V; under 1 uA in standby"
+		},
+		"input-logic-levels": {
+			"high-min": "Vcc x 0.7",
+			"low-max": "Vcc x 0.3",
+			"pull-down": 200000
+		},
+		"working-temperature": {
+			"min": -20,
+			"max": 85
+		},
+		"protections": [
+			"thermal shutdown (TSD, ~175 C)",
+			"under-voltage lockout (UVLO, ~1.9 V)"
+		],
+		"communications": {
+			"interface": "parallel digital logic, no bus protocol",
+			"control-pins": [
+				{
+					"name": "PWMA",
+					"type": "input",
+					"description": "channel A speed (PWM), 200k internal pull-down"
+				},
+				{
+					"name": "AIN1",
+					"type": "input",
+					"description": "channel A direction input 1"
+				},
+				{
+					"name": "AIN2",
+					"type": "input",
+					"description": "channel A direction input 2"
+				},
+				{
+					"name": "PWMB",
+					"type": "input",
+					"description": "channel B speed (PWM)"
+				},
+				{
+					"name": "BIN1",
+					"type": "input",
+					"description": "channel B direction input 1"
+				},
+				{
+					"name": "BIN2",
+					"type": "input",
+					"description": "channel B direction input 2"
+				},
+				{
+					"name": "STBY",
+					"type": "input",
+					"description": "low = standby, outputs high impedance; must be high to drive"
+				}
+			],
+			"power-pins": [
+				{
+					"name": "VM",
+					"description": "motor supply"
+				},
+				{
+					"name": "VCC",
+					"description": "logic supply"
+				},
+				{
+					"name": "GND",
+					"description": "ground (small signal and power)"
+				}
+			],
+			"output-pins": [
+				"AO1",
+				"AO2",
+				"BO1",
+				"BO2"
+			],
+			"truth-table": [
+				{
+					"in1": "H",
+					"in2": "H",
+					"pwm": "H/L",
+					"mode": "short brake"
+				},
+				{
+					"in1": "L",
+					"in2": "H",
+					"pwm": "H",
+					"mode": "CCW"
+				},
+				{
+					"in1": "L",
+					"in2": "H",
+					"pwm": "L",
+					"mode": "short brake"
+				},
+				{
+					"in1": "H",
+					"in2": "L",
+					"pwm": "H",
+					"mode": "CW"
+				},
+				{
+					"in1": "H",
+					"in2": "L",
+					"pwm": "L",
+					"mode": "short brake"
+				},
+				{
+					"in1": "L",
+					"in2": "L",
+					"pwm": "H",
+					"mode": "stop (outputs high impedance)"
+				},
+				{
+					"in1": "H/L",
+					"in2": "H/L",
+					"pwm": "H/L",
+					"stby": "L",
+					"mode": "standby (outputs high impedance)"
+				}
+			]
+		}
+	}
+}

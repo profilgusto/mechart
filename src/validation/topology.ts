@@ -1,6 +1,7 @@
 import type { Issue, Library } from '../model/types'
 import type { ArchEdge, ArchNode } from '../model/graph'
-import { resolveEdge, nodeLabel } from '../model/graph'
+import { acceptsPeer } from '../model/component-type'
+import { resolveEdge, nodeLabel, portRef } from '../model/graph'
 
 /**
  * Algumas portas so fazem sentido num ponto especifico da topologia. O lado
@@ -24,14 +25,14 @@ export function checkTopology(
     ] as const) {
       const { only, onlyNote } = lado.port
       if (!only?.length) continue
-      if (only.includes(outro.component.id)) continue
+      if (acceptsPeer(only, outro.component)) continue
 
       const esperado = only.join(' ou ')
       issues.push({
         level: 'warning',
         rule: 'topology',
         message:
-          `${nodeLabel(lado.node, lado.component)}.${lado.port.id} espera ${esperado} do outro lado, ` +
+          `${portRef(lado.node, lado.component, lado.port)} espera ${esperado} do outro lado, ` +
           `mas está ligado a ${nodeLabel(outro.node, outro.component)}.` +
           (onlyNote ? ` ${onlyNote}` : ''),
         nodeIds: [lado.node.id, outro.node.id],

@@ -1,0 +1,220 @@
+{
+	"schemaVersion": 1,
+	"id": "aht20-bmp280",
+	"description": "3-in-1 module: AHT20 (temperature and humidity) + BMP280 (barometric pressure and temperature) on a shared I2C bus, headers not soldered",
+	"type": {
+		"level-0": "sensor",
+		"level-1": "environmental",
+		"level-2": "combo"
+	},
+	"category": "sensor",
+	"ports": [
+		{
+			"id": "pwr",
+			"label": "VDD / GND",
+			"kind": "power",
+			"dir": "sink",
+			"v": null,
+			"draw_mA": 0.75,
+			"required": true,
+			"count": 1,
+			"src": "aht20.supply-voltage (2,0–5,5 V); bmp280.supply-voltage.vdd (1,71–3,6 V); aht20.current.measuring 0,023 + bmp280.current.peak 0,72",
+			"note": "a tensão do MÓDULO não está publicada — só a de cada chip, e as faixas divergem. A confirmar antes de ligar em 5 V, que estouraria o BMP280",
+			"pins": [
+				{
+					"id": "VDD",
+					"signal": "pos"
+				},
+				{
+					"id": "GND",
+					"signal": "neg"
+				}
+			]
+		},
+		{
+			"id": "i2c",
+			"label": "I²C 0x38 + 0x76/0x77",
+			"kind": "data",
+			"dir": "bidir",
+			"protocol": "i2c",
+			"level_v": null,
+			"count": 1,
+			"src": "bmp280.communications.note (ambos os sensores no mesmo barramento I2C)",
+			"note": "dois endereços num único par SCL/SDA; pull-ups externos necessários (ex. 10k)",
+			"pins": [
+				{
+					"id": "SDA",
+					"signal": "sda"
+				},
+				{
+					"id": "SCL",
+					"signal": "scl"
+				}
+			]
+		}
+	],
+	"specs": {
+		"module": {
+			"description": "generic 4-pin AHT20+BMP280 breakout (widely cloned/rebranded design, e.g. sold as \"EstarDyn AHT20+BMP280\"); pin-level and voltage data below is for this common board family, not a datasheet of the exact unit purchased",
+			"working-voltage": {
+				"min": 2,
+				"max": 5
+			},
+			"pins": [
+				"VDD",
+				"GND",
+				"SDA",
+				"SCL"
+			],
+			"note": "board accepts 2.0-5 V even though the bare BMP280 chip tops out at 3.6 V (absolute max 4.25 V) — implies an onboard regulator feeds both chips, but neither source names the regulator IC or confirms it explicitly; pull-up presence on SDA/SCL also not confirmed (one source says pull-ups, typically 4.7k, may need to be added externally 'if not already included on the module')",
+			"src": "https://manuals.plus/ae/1005007514986096 (EstarDyn AHT20+BMP280 user manual, working voltage DC 2.0-5V, 4-pin VDD/GND/SDA/SCL); https://docs.cirkitdesigner.com/component/3d8e6da8-841a-47a6-a1aa-0aa902c905e1/aht20bmp280 (pinout confirmation, pull-up note)"
+		},
+		"aht20": {
+			"description": "ASAIR AHT20 temperature and humidity sensor",
+			"supply-voltage": {
+				"min": 2,
+				"nominal": 3.3,
+				"max": 5.5
+			},
+			"current": {
+				"measuring": 0.023,
+				"dormant": 0.00025
+			},
+			"power-consumption": {
+				"measuring": 0.07,
+				"average": 0.0033
+			},
+			"humidity": {
+				"range": {
+					"min": 0,
+					"max": 100
+				},
+				"accuracy": 2,
+				"resolution": 0.024,
+				"repeatability": 0.1,
+				"hysteresis": 1,
+				"response-time": 8,
+				"long-term-drift": 0.5
+			},
+			"temperature": {
+				"range": {
+					"min": -40,
+					"max": 85
+				},
+				"accuracy": 0.3,
+				"resolution": 0.01,
+				"repeatability": 0.1,
+				"response-time": {
+					"min": 5,
+					"max": 30
+				},
+				"long-term-drift": 0.04
+			},
+			"timing": {
+				"power-on-to-idle": 20,
+				"wait-after-power-on": 40,
+				"measurement-time": 75,
+				"soft-reset-time": 20,
+				"note": "milliseconds; datasheet recommends reading no faster than once every 2 s to avoid self-heating"
+			},
+			"communications": {
+				"interface": "I2C, 2-wire",
+				"address": "0x38 (7-bit)",
+				"clock-frequency": {
+					"standard-max": 100000,
+					"high-speed-max": 400000
+				},
+				"pull-ups": "external required, e.g. 10k",
+				"commands": {
+					"initialization": "0xBE",
+					"trigger-measurement": "0xAC",
+					"soft-reset": "0xBA",
+					"read-status": "0x71"
+				},
+				"data-format": "20-bit humidity and 20-bit temperature; RH% = S/2^20 * 100, T(C) = S/2^20 * 200 - 50"
+			}
+		},
+		"bmp280": {
+			"description": "Bosch Sensortec BMP280 barometric pressure and temperature sensor",
+			"supply-voltage": {
+				"vdd": {
+					"min": 1.71,
+					"nominal": 1.8,
+					"max": 3.6
+				},
+				"vddio": {
+					"min": 1.2,
+					"nominal": 1.8,
+					"max": 3.6
+				},
+				"absolute-max": 4.25
+			},
+			"current": {
+				"typical-1hz-lowest-power": 0.0028,
+				"peak-during-pressure-measurement": 0.72,
+				"during-temperature-measurement": 0.325,
+				"standby": 0.0002,
+				"sleep": 0.0001
+			},
+			"pressure": {
+				"range": {
+					"min": 300,
+					"max": 1100
+				},
+				"absolute-accuracy": 1,
+				"absolute-accuracy-extended": 1.7,
+				"relative-accuracy": 0.12,
+				"relative-accuracy-in-meters": 1,
+				"resolution": 0.0016,
+				"noise-ultra-high-resolution": 1.3,
+				"long-term-stability": 1,
+				"note": "hPa; absolute accuracy +/-1.0 hPa over 0-65 C and +/-1.7 hPa over -20-0 C; relative accuracy at 700-900 hPa and 25-40 C"
+			},
+			"temperature": {
+				"range-operational": {
+					"min": -40,
+					"max": 85
+				},
+				"range-full-accuracy": {
+					"min": 0,
+					"max": 65
+				},
+				"accuracy-at-25c": 0.5,
+				"accuracy-full-range": 1,
+				"resolution": 0.01
+			},
+			"power-modes": [
+				"sleep",
+				"normal (automatic cycling)",
+				"forced (single measurement)"
+			],
+			"oversampling": "pressure and temperature independently from x1 to x16, plus built-in IIR filter (coefficient 0 to 16)",
+			"startup-time": 2,
+			"max-sampling-rate": 182,
+			"communications": {
+				"interfaces": [
+					"I2C",
+					"SPI"
+				],
+				"i2c": {
+					"address": [
+						"0x76 (SDO to GND)",
+						"0x77 (SDO to VDDIO)"
+					],
+					"note": "SDO must not be left floating; CSB must be tied to VDDIO to select I2C",
+					"modes": "standard, fast and high speed"
+				},
+				"spi": {
+					"modes": "4-wire and 3-wire; SPI mode 00 (CPOL = CPHA = 0) and mode 11 (CPOL = CPHA = 1), selected automatically",
+					"pins": [
+						"CSB",
+						"SCK",
+						"SDI",
+						"SDO"
+					]
+				},
+				"note": "on this module both sensors sit on the same I2C bus (VDD, GND, SCL, SDA header)"
+			}
+		}
+	}
+}

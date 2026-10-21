@@ -1,6 +1,7 @@
 import type { Component, Library, Port, PortKind } from './types'
 import type { ArchEdge, ArchNode } from './graph'
 import { nodeLabel, effectiveVoltage, effectiveCurrent } from './graph'
+import { acceptsPeer } from './component-type'
 import { portsCompatible } from '../validation/protocol'
 import { formatRange, rangeBounds } from '../data/normalize'
 
@@ -91,7 +92,7 @@ export function possibleConnections(
     const semPortas = ca.ports.length === 0 ? ca.id : cb.id
     return {
       ok: false,
-      reason: `${semPortas} ainda não tem portas declaradas em data/ports.json.`,
+      reason: `${semPortas} ainda não tem portas declaradas em data/components/.`,
     }
   }
 
@@ -122,8 +123,7 @@ export function possibleConnections(
 
         // Uma porta que so faz sentido num ponto da topologia (o lado B+/B- de
         // um BMS) nao entra como opcao fora dele: o app sabe que esta errado.
-        if (ps.only && !ps.only.includes(ct.id)) continue
-        if (pt.only && !pt.only.includes(cs.id)) continue
+        if (!acceptsPeer(ps.only, ct) || !acceptsPeer(pt.only, cs)) continue
 
         // Duas faixas de tensao que nao se cruzam nunca sao o que o usuario
         // quer -- e o que faria a saida da ponte H virar candidata a alimentar

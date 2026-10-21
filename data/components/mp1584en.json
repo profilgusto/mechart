@@ -1,0 +1,99 @@
+{
+	"schemaVersion": 1,
+	"id": "mp1584en",
+	"description": "MP1584EN step-down (buck) module, D-SUN board, adjustable 3.3-12V version (trimmer on board)",
+	"type": {
+		"level-0": "dc-dc-converter",
+		"level-1": "buck",
+		"level-2": "adjustable"
+	},
+	"category": "power",
+	"instance": {
+		"adjustable": true
+	},
+	"ports": [
+		{
+			"id": "in",
+			"label": "IN+ / IN-",
+			"kind": "power",
+			"dir": "sink",
+			"v": {
+				"min": 4.5,
+				"max": 28
+			},
+			"draw_mA": 0.1,
+			"required": true,
+			"count": 1,
+			"src": "input-voltage; quiescent-current",
+			"pins": [
+				{
+					"id": "IN+",
+					"signal": "pos"
+				},
+				{
+					"id": "IN-",
+					"signal": "neg"
+				}
+			]
+		},
+		{
+			"id": "out",
+			"label": "OUT+ / OUT-",
+			"kind": "power",
+			"dir": "source",
+			"v": {
+				"min": 0.8,
+				"max": 20
+			},
+			"supply_mA": 3000,
+			"count": 8,
+			"src": "output-voltage; output-current.max 3 A",
+			"note": "tensão definida pelo trimmer da placa (variante ajustável, anunciada para 3,3–12 V); ajuste ANTES de ligar qualquer carga",
+			"pins": [
+				{
+					"id": "OUT+",
+					"signal": "pos"
+				},
+				{
+					"id": "OUT-",
+					"signal": "neg"
+				}
+			]
+		}
+	],
+	"specs": {
+		"chip": "Monolithic Power Systems MP1584, 3 A 1.5 MHz 28 V step-down converter, internal high-side MOSFET, current mode control",
+		"input-voltage": {
+			"min": 4.5,
+			"max": 28
+		},
+		"output-voltage": {
+			"min": 0.8,
+			"max": 20,
+			"note": "set by the on-board trimmer; the chip regulates against an internal 0.8 V reference; the board variant bought is the adjustable one, advertised for the 3.3 to 12 V range"
+		},
+		"output-current": {
+			"max": 3
+		},
+		"switching-frequency": 1500000,
+		"efficiency": 96,
+		"quiescent-current": 0.1,
+		"features": [
+			"enable / shutdown pin on the chip",
+			"thermal shutdown",
+			"current mode control"
+		],
+		"working-temperature": {
+			"min": -45,
+			"max": 85,
+			"note": "figure published by the module seller; the MP1584 chip itself is specified for -40 to 85 C junction"
+		},
+		"connections": {
+			"IN+": "input positive",
+			"IN-": "input negative",
+			"OUT+": "output positive",
+			"OUT-": "output negative"
+		},
+		"note": "adjust the output with the trimmer before connecting any load: the board leaves the factory at an arbitrary setting"
+	}
+}

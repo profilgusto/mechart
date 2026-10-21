@@ -1,0 +1,111 @@
+{
+	"schemaVersion": 1,
+	"id": "guva-s12sd",
+	"description": "Solar UV intensity breakout board with Genicom GUVA-S12SD photodiode and on-board op-amp, analog output",
+	"type": {
+		"level-0": "sensor",
+		"level-1": "light",
+		"level-2": "uv"
+	},
+	"category": "sensor",
+	"ports": [
+		{
+			"id": "pwr",
+			"label": "VCC / GND",
+			"kind": "power",
+			"dir": "sink",
+			"v": null,
+			"draw_mA": null,
+			"required": true,
+			"count": 1,
+			"src": "communications.supply-voltage.note",
+			"note": "não publicado para esta placa clone; o MCP6241 do projeto de referência opera de 1,8 a 5,5 V e estes módulos costumam ser usados a 3,3 ou 5 V — a confirmar",
+			"pins": [
+				{
+					"id": "VCC",
+					"signal": "pos"
+				},
+				{
+					"id": "GND",
+					"signal": "neg"
+				}
+			]
+		},
+		{
+			"id": "sig",
+			"label": "SIG (saída analógica)",
+			"kind": "data",
+			"dir": "out",
+			"protocol": "analog",
+			"level_v": null,
+			"count": 1,
+			"src": "communications.interface; communications.pinout[2]",
+			"note": "exige um ADC no host; o resistor de ganho desta placa não é publicado, a curva precisa ser medida",
+			"pins": [
+				{
+					"id": "SIG",
+					"signal": "analog"
+				}
+			]
+		}
+	],
+	"specs": {
+		"sensing-element": "gallium nitride Schottky photodiode, photovoltaic mode, good visible blindness",
+		"spectral-detection-range": {
+			"min": 240,
+			"max": 370
+		},
+		"peak-responsivity": {
+			"value": 0.14,
+			"wavelength": 352
+		},
+		"photocurrent": {
+			"uv-index-formula": "photocurrent (nA) = 21 x UV index + 83",
+			"uva-lamp-1mw-cm2": {
+				"min": 101,
+				"typical": 113,
+				"max": 125
+			},
+			"dark-current-max": 1,
+			"note": "nanoamperes; dark current measured at Vr = 1 V"
+		},
+		"viewing-angle": 100,
+		"temperature-coefficient": 0.08,
+		"max-ratings": {
+			"reverse-voltage": 5,
+			"forward-current": 1
+		},
+		"working-temperature": {
+			"min": -30,
+			"max": 85
+		},
+		"storage-temperature": {
+			"min": -40,
+			"max": 90
+		},
+		"communications": {
+			"interface": "analog voltage output (no digital bus), needs an ADC on the host",
+			"pinout": [
+				{
+					"name": "VCC",
+					"description": "supply"
+				},
+				{
+					"name": "GND",
+					"description": "ground"
+				},
+				{
+					"name": "SIG",
+					"description": "analog output from the on-board transimpedance amplifier"
+				}
+			],
+			"supply-voltage": {
+				"note": "not published for this clone board; the op-amp in the reference design (MCP6241) works from 1.8 to 5.5 V and these modules are normally used at 3.3 or 5 V - to be confirmed"
+			},
+			"output-formula": {
+				"value": null,
+				"note": "output voltage = amplifier gain x photocurrent; the reference circuit (6.8 Mohm, Vcc 5 V) gives Vout = 0.2 x UV index + 0.6 under sunlight, but the gain resistor of this particular board is not published - must be measured or calibrated"
+			}
+		}
+	}
+}

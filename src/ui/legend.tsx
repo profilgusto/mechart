@@ -59,7 +59,8 @@ export default function Legend({
 
   const temPortas = roles.size > 0
   const temLigacoes = power || protocols.size > 0
-  if (!temPortas && !temLigacoes) return null
+  // Sem ligacoes a barra fica vazia, mas continua la: os paineis flutuantes
+  // contam com os LEGEND_H px dela no rodape.
 
   const protocolos = Object.keys(PROTOCOL_COLOR).filter((name) => protocols.has(name))
   const extras = [...protocols].filter((name) => !(name in PROTOCOL_COLOR))

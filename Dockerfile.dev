@@ -1,0 +1,13 @@
+# syntax=docker/dockerfile:1
+
+# Imagem de desenvolvimento: so as dependencias. O codigo vem montado do host
+# (ver docker-compose.yml), entao o Vite recarrega a cada edicao.
+FROM node:24-alpine
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+EXPOSE 5180
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

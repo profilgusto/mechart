@@ -124,3 +124,15 @@ export function filterByTypePath<T>(
 ): Array<{ id: string; type: ComponentType; data: T }> {
   return components.filter(comp => matchesTypePath(comp.type, path))
 }
+
+/**
+ * Uma porta com `only` aceita o componente do outro lado quando `only` lista o
+ * id dele ou um tipo dele (em qualquer nivel da hierarquia). Sem `only`, aceita tudo.
+ */
+export function acceptsPeer(
+  only: string[] | undefined,
+  peer: { id: string; type: ComponentType },
+): boolean {
+  if (!only?.length) return true
+  return [peer.id, ...getTypeHierarchy(peer.type)].some((a) => only.includes(a))
+}

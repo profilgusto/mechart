@@ -2,12 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ReactFlow,
   Background,
-  Controls,
   MiniMap,
+  Panel,
   useReactFlow,
   type Edge,
   type NodeChange,
   MarkerType,
+  PanOnScrollMode,
   applyNodeChanges,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
@@ -23,6 +24,9 @@ const nodeTypes = { component: ComponentNode }
 
 /** Largura do bloco em styles.css (.node), para centrar o cursor ao soltar. */
 const NODE_W = 210
+
+/** Acompanha a animacao dos paineis (0.22s em styles.css). */
+const PANEL_SHIFT = 'margin 0.22s cubic-bezier(0.4, 0, 0.2, 1)'
 
 /** "3S2P · 6 células" para um pack; null quando o bloco e uma peca unica. */
 function describePack(node: ArchNode, component: Component): string | null {
@@ -77,6 +81,8 @@ export default function Canvas({
   nodes,
   edges,
   issues,
+  issueFocus,
+  onClearIssueFocus,
   selectedNodeIds,
   connectFrom,
   expanded,
@@ -88,13 +94,19 @@ export default function Canvas({
   onStartConnect,
   onCancelConnect,
   onStartDisconnect,
+  onRename,
   onPickTarget,
+  onNodeOpen,
   centerRef,
+  insets,
 }: {
   library: Library
   nodes: ArchNode[]
   edges: ArchEdge[]
   issues: Issue[]
+  /** Aviso clicado no painel: realca so o que ele envolve e enquadra na tela. */
+  issueFocus: { nodeIds: string[]; edgeIds: string[] } | null
+  onClearIssueFocus: () => void
   /** Blocos selecionados (Shift acrescenta, arrastar move todos). */
   selectedNodeIds: string[]
   /** Bloco de origem quando ha uma ligacao em curso. */
@@ -112,10 +124,19 @@ export default function Canvas({
   onStartConnect: (nodeId: string) => void
   onCancelConnect: () => void
   onStartDisconnect: (nodeId: string) => void
+  onRename: (nodeId: string, label: string) => void
   onPickTarget: (targetId: string) => void
+  /** Duplo clique num bloco (o App abre o inspetor se estiver recolhido). */
+  onNodeOpen: (nodeId: string) => void
+  /**
+   * Quanto cada painel flutuante (biblioteca, inspetor, problemas + legenda)
+   * cobre de cada borda do canvas. Controles e minimapa se afastam por esse
+   * tanto para continuarem visiveis.
+   */
+  insets: { left: number; right: number; bottom: number }
 }) {
   const wrapper = useRef<HTMLDivElement>(null)
-  const { screenToFlowPosition } = useReactFlow()
+  const { screenToFlowPosition, setViewport, getNodesBounds, zoomIn, zoomOut, fitView } = useReactFlow()
   
   // Estado interno do ReactFlow para posições durante drag
   const [internalNodes, setInternalNodes] = useState<ComponentFlowNode[]>([])
@@ -145,18 +166,74 @@ export default function Canvas({
     const rank = { error: 3, warning: 2, unverifiable: 1 }
     const nodeLevel: Record<string, Issue['level']> = {}
     const edgeLevel: Record<string, Issue['level']> = {}
+    const nodeIssues: Record<string, Issue[]> = {}
     for (const i of issues) {
       for (const id of i.nodeIds ?? []) {
+        ;(nodeIssues[id] ??= []).push(i)
         if (!nodeLevel[id] || rank[i.level] > rank[nodeLevel[id]]) nodeLevel[id] = i.level
       }
       for (const id of i.edgeIds ?? []) {
         if (!edgeLevel[id] || rank[i.level] > rank[edgeLevel[id]]) edgeLevel[id] = i.level
       }
     }
-    return { nodeLevel, edgeLevel }
+    return { nodeLevel, edgeLevel, nodeIssues }
   }, [issues])
 
-  useMemo(() => {
+  // Com algo selecionado, so ele, seus vizinhos e as ligacoes dele ficam em destaque.
+  const focus = useMemo(() => {
+    if (issueFocus) {
+      const keep = new Set(issueFocus.nodeIds)
+      const keepEdges = new Set(issueFocus.edgeIds)
+      for (const e of edges) {
+        if (keepEdges.has(e.id)) {
+          keep.add(e.source)
+          keep.add(e.target)
+        }
+      }
+      return { nodes: keep, edges: keepEdges }
+    }
+    if (selectedNodeIds.length === 0) return null
+    const keep = new Set(selectedNodeIds)
+    const keepEdges = new Set<string>()
+    for (const e of edges) {
+      if (keep.has(e.source) || keep.has(e.target)) keepEdges.add(e.id)
+    }
+    for (const e of edges) {
+      if (keepEdges.has(e.id)) {
+        keep.add(e.source)
+        keep.add(e.target)
+      }
+    }
+    return { nodes: keep, edges: keepEdges }
+  }, [issueFocus, selectedNodeIds, edges])
+
+  // Centraliza o bounding box dos blocos envolvidos, fora da area dos paineis.
+  useEffect(() => {
+    if (!issueFocus || !focus) return
+    const targets = [...focus.nodes].filter((id) => nodes.some((n) => n.id === id))
+    if (targets.length === 0) return
+    const bounds = getNodesBounds(targets)
+    const rect = wrapper.current?.getBoundingClientRect()
+    if (!rect) return
+    const pad = 60
+    const availW = Math.max(rect.width - insets.left - insets.right - pad * 2, 100)
+    const availH = Math.max(rect.height - insets.bottom - pad * 2, 100)
+    const zoom = Math.min(availW / Math.max(bounds.width, 1), availH / Math.max(bounds.height, 1), 1.2)
+    const cx = insets.left + pad + availW / 2
+    const cy = pad + availH / 2
+    void setViewport(
+      {
+        x: cx - (bounds.x + bounds.width / 2) * zoom,
+        y: cy - (bounds.y + bounds.height / 2) * zoom,
+        zoom,
+      },
+      { duration: 400 },
+    )
+    // So reenquadra quando o aviso muda, nao a cada edicao ou resize de painel.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [issueFocus])
+
+  useEffect(() => {
     const ids = new Set(selectedNodeIds)
     const multi = selectedNodeIds.length > 1
     const incoming = incomingVoltages(library, nodes, edges)
@@ -177,10 +254,12 @@ export default function Canvas({
           type: 'component' as const,
           position: n.position,
           selected: ids.has(n.id),
+          className: focus && !focus.nodes.has(n.id) ? 'dimmed' : undefined,
           data: {
             component,
             label: nodeLabel(n, component),
             level: worst.nodeLevel[n.id] ?? null,
+            issues: worst.nodeIssues[n.id] ?? [],
             arrangement: describePack(n, component),
             connected: edges.flatMap((e) =>
               e.source === n.id ? [e.sourcePort] : e.target === n.id ? [e.targetPort] : [],
@@ -196,13 +275,13 @@ export default function Canvas({
             onStartConnect,
             onCancelConnect,
             onStartDisconnect,
+            onRename,
           },
         },
       ]
     })
     setInternalNodes(newNodes)
-    return newNodes
-  }, [nodes, edges, library, selectedNodeIds, worst, connectFrom, expanded, idAsTitle, onStartConnect, onCancelConnect, onStartDisconnect])
+  }, [nodes, edges, library, selectedNodeIds, focus, worst, connectFrom, expanded, idAsTitle, onStartConnect, onCancelConnect, onStartDisconnect, onRename])
 
   const flowEdges: Edge[] = useMemo(
     () =>
@@ -221,6 +300,7 @@ export default function Canvas({
                 : (PROTOCOL_COLOR[port?.protocol ?? ''] ?? '#7a7a7a')
 
         const base = {
+          className: focus && !focus.edges.has(e.id) ? 'dimmed' : undefined,
           source: e.source,
           target: e.target,
           animated: level === 'error',
@@ -289,7 +369,7 @@ export default function Canvas({
           },
         ]
       }),
-    [edges, nodes, library, worst, expanded],
+    [edges, nodes, library, worst, expanded, focus],
   )
 
   /**
@@ -346,7 +426,9 @@ export default function Canvas({
         onNodeClick={(_, n) => {
           if (connectFrom && connectFrom !== n.id) onPickTarget(n.id)
         }}
+        onNodeDoubleClick={(_, n) => onNodeOpen(n.id)}
         onPaneClick={() => {
+          onClearIssueFocus()
           if (connectFrom) onCancelConnect()
         }}
         // Ligar e por clique, nao por arrasto entre conectores.
@@ -363,12 +445,37 @@ export default function Canvas({
           const p = screenToFlowPosition({ x: e.clientX, y: e.clientY })
           onDrop(componentId, { x: p.x - NODE_W / 2, y: p.y - 40 })
         }}
+        // Trackpad: dois dedos transladam, pinch (ctrl+wheel) da zoom. Com
+        // panOnScroll a roda deixa de dar zoom; o pinch continua via zoomOnPinch.
+        panOnScroll
+        panOnScrollMode={PanOnScrollMode.Free}
+        zoomOnScroll={false}
+        zoomOnPinch
+        zoomOnDoubleClick={false}
+        minZoom={0.05}
         fitView
         proOptions={{ hideAttribution: false }}
       >
         <Background gap={16} size={1} />
-        <Controls showInteractive={false} />
-        <MiniMap pannable zoomable className="mecha-minimap" />
+        <Panel
+          position="bottom-right"
+          className="mecha-zoom"
+          style={{ marginRight: 15 + insets.right, marginBottom: 15 + insets.bottom + 100, transition: PANEL_SHIFT }}
+        >
+          <button type="button" title="Menos zoom" aria-label="Menos zoom" onClick={() => zoomOut({ duration: 150 })}>−</button>
+          <button type="button" title="Mais zoom" aria-label="Mais zoom" onClick={() => zoomIn({ duration: 150 })}>+</button>
+          <button type="button" title="Enquadrar todos os componentes" aria-label="Enquadrar todos os componentes" onClick={() => fitView({ padding: 0.15, duration: 200 })}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9" />
+            </svg>
+          </button>
+        </Panel>
+        <MiniMap
+          pannable
+          zoomable
+          className="mecha-minimap"
+          style={{ width: 150, height: 100, marginRight: 15 + insets.right, marginBottom: 15 + insets.bottom, transition: PANEL_SHIFT }}
+        />
       </ReactFlow>
     </div>
   )

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { ReactFlowProvider } from '@xyflow/react'
-import type { Library as Lib } from './model/types'
+import type { Issue, Library as Lib } from './model/types'
 import type { ArchEdge, ArchNode } from './model/graph'
-import { effectiveVoltage, nodeLabel, resolveEdge } from './model/graph'
+import { effectiveVoltage, nextNaming, nodeLabel, normalizeNames, resolveEdge } from './model/graph'
 import { formatRange } from './data/normalize'
 import { loadProject } from './data/load'
 import {
@@ -23,8 +23,9 @@ import ProjectName from './ui/ProjectName'
 import LibraryPanel from './ui/Library'
 import Inspector from './ui/Inspector'
 import Canvas from './ui/Canvas'
-import IssuePanel from './ui/IssuePanel'
+import IssuePanel, { issueKey } from './ui/IssuePanel'
 import Legend from './ui/legend'
+import ThemeToggle from './ui/ThemeToggle'
 import { useResizable, useStoredFlag } from './ui/useResizable'
 
 /** Altura fixa da legenda (ver .legend em styles.css) — a barra de problemas
@@ -122,6 +123,11 @@ export default function App() {
   const [inspCollapsed, setInspCollapsed] = useStoredFlag('mechart:inspCollapsed')
   const [issuesCollapsed, setIssuesCollapsed] = useStoredFlag('mechart:issuesCollapsed')
 
+  const [ignoredIssues, setIgnoredIssues] = useState<Set<string>>(new Set())
+  const [showIgnored, setShowIgnored] = useState(false)
+  /** Lista de ignoradas para gravar no projeto; omitida quando vazia. */
+  const ignoredList = useMemo(() => [...ignoredIssues], [ignoredIssues])
+
   const loaded = useRef(false)
   /** O app abriu no projeto em branco padrao, ainda sem nada do usuario. */
   const pristineBlank = useRef(false)
@@ -135,8 +141,9 @@ export default function App() {
         setLibrary(library)
         if (project) {
           setProjectName(project.name)
-          setNodes(project.nodes)
+          setNodes(normalizeNames(project.nodes))
           setEdges(project.edges)
+          setIgnoredIssues(new Set(project.ignoredIssues))
         }
         // Sem copia local, o mechart nasce num projeto novo em branco.
         pristineBlank.current = !project
@@ -161,11 +168,12 @@ export default function App() {
 
     const t = setTimeout(() => {
       const project: ProjectFile = { name: projectName, nodes, edges }
+      if (ignoredList.length > 0) project.ignoredIssues = ignoredList
       writeStoredProject(project)
       pristineBlank.current = false
     }, 600)
     return () => clearTimeout(t)
-  }, [projectName, nodes, edges])
+  }, [projectName, nodes, edges, ignoredList])
 
   const cancelConnect = useCallback(() => {
     setConnectFrom(null)
@@ -180,6 +188,13 @@ export default function App() {
     setChoices(null)
     setDisconnecting(nodeId)
   }, [])
+
+  const [activeIssue, setActiveIssue] = useState<Issue | null>(null)
+  const clearIssueFocus = useCallback(() => setActiveIssue(null), [])
+  const issueFocus = useMemo(
+    () => (activeIssue ? { nodeIds: activeIssue.nodeIds ?? [], edgeIds: activeIssue.edgeIds ?? [] } : null),
+    [activeIssue],
+  )
 
   const selectOnly = useCallback((id: string | null) => {
     setSelectedNodeIds(id ? [id] : [])
@@ -233,6 +248,11 @@ export default function App() {
     [library, nodes, edges],
   )
 
+  const activeIssues = useMemo(
+    () => issues.filter((i) => !ignoredIssues.has(issueKey(i))),
+    [issues, ignoredIssues],
+  )
+
   /** Ligacoes do bloco em remocao, apresentadas como opcoes para desfazer. */
   const disconnectOptions = useMemo(() => {
     if (!library || !disconnecting) return null
@@ -267,17 +287,16 @@ export default function App() {
 
   const addNode = useCallback((componentId: string, position: { x: number; y: number }) => {
     setNodes((prev) => {
-      const n = prev.filter((x) => x.componentId === componentId).length
+      const { label, renames } = nextNaming(prev, componentId)
       return [
-        ...prev,
-        {
-          id: `${componentId}#${Date.now().toString(36)}`,
-          componentId,
-          position,
-          label: n > 0 ? `${componentId} (${n + 1})` : undefined,
-        },
+        ...prev.map((x) => (renames[x.id] ? { ...x, label: renames[x.id] } : x)),
+        { id: `${componentId}#${Date.now().toString(36)}`, componentId, position, label },
       ]
     })
+  }, [])
+
+  const renameNode = useCallback((id: string, label: string) => {
+    setNodes((prev) => prev.map((n) => (n.id === id ? { ...n, label } : n)))
   }, [])
 
   const commitMany = useCallback(
@@ -353,8 +372,10 @@ export default function App() {
   /** Fecha qualquer interacao em curso e troca o projeto inteiro. */
   const replaceGraph = useCallback((next: ProjectFile) => {
     setProjectName(next.name)
-    setNodes(next.nodes)
+    setNodes(normalizeNames(next.nodes))
     setEdges(next.edges)
+    setIgnoredIssues(new Set(next.ignoredIssues))
+    setShowIgnored(false)
     setSelectedNodeIds([])
     setLibSelection(null)
     setConnectFrom(null)
@@ -424,6 +445,7 @@ export default function App() {
   /** Baixar projeto: o JSON do projeto atual, nomeado pelo nome + timestamp. */
   const downloadProject = useCallback(() => {
     const project: ProjectFile = { name: projectName, nodes, edges }
+    if (ignoredList.length > 0) project.ignoredIssues = ignoredList
     const blob = new Blob([serializeProject(project)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -432,10 +454,22 @@ export default function App() {
     a.click()
     URL.revokeObjectURL(url)
     setFlash({ tone: 'ok', text: 'Download do projeto iniciado' })
-  }, [projectName, nodes, edges])
+  }, [projectName, nodes, edges, ignoredList])
+
+  // Cmd/Ctrl + S equivale a "Arquivo -> Baixar projeto" (e evita o "salvar página" do navegador).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        downloadProject()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [downloadProject])
 
   if (error) return <div className="center">Erro ao carregar o projeto: {error}</div>
-  if (!library) return <div className="center">Carregando library.json…</div>
+  if (!library) return <div className="center">Carregando catálogo…</div>
 
   const primarySelectedId =
     selectedNodeIds.length > 0 ? selectedNodeIds[selectedNodeIds.length - 1] : null
@@ -497,10 +531,10 @@ export default function App() {
               type="button"
               className={`mode${idAsTitle ? ' mode--on' : ''}`}
               aria-pressed={idAsTitle}
-              data-tip="título do card pelo id da instância"
+              data-tip="título do card pelo nome da instância"
               onClick={() => setIdAsTitle(true)}
             >
-              id
+              nome
             </button>
           </div>
 
@@ -511,6 +545,7 @@ export default function App() {
                 ? 'clique no bloco de destino — Esc cancela'
                 : 'clique num bloco · Shift+clique seleciona vários para mover em bloco'}
           </span>
+          <ThemeToggle />
         </header>
 
         <div className="diagram-area">
@@ -519,7 +554,9 @@ export default function App() {
               library={library}
               nodes={nodes}
               edges={edges}
-              issues={issues}
+              issues={activeIssues}
+              issueFocus={issueFocus}
+              onClearIssueFocus={clearIssueFocus}
               selectedNodeIds={selectedNodeIds}
               connectFrom={connectFrom}
               expanded={expanded}
@@ -527,7 +564,20 @@ export default function App() {
               onNodesChange={setNodes}
               onSelectionChange={(ids) => {
                 syncSelection(ids)
-                if (ids.length > 0) setLibSelection(null)
+                if (ids.length > 0) {
+                  setLibSelection(null)
+                  // Clicar num bloco envolvido no aviso mantem o realce; qualquer outro o desfaz.
+                  if (issueFocus) {
+                    const involved = new Set(issueFocus.nodeIds)
+                    for (const e of edges) {
+                      if (issueFocus.edgeIds.includes(e.id)) {
+                        involved.add(e.source)
+                        involved.add(e.target)
+                      }
+                    }
+                    if (!ids.every((id) => involved.has(id))) clearIssueFocus()
+                  }
+                }
               }}
               onDrop={addNode}
               onDeleteEdges={deleteEdges}
@@ -538,8 +588,18 @@ export default function App() {
               }}
               onCancelConnect={cancelConnect}
               onStartDisconnect={startDisconnect}
+              onRename={renameNode}
               onPickTarget={pickTarget}
+              onNodeOpen={(id) => {
+                selectOnly(id)
+                setInspCollapsed(false)
+              }}
               centerRef={canvasCenter}
+              insets={{
+                left: libCollapsed ? 0 : libWidth.size,
+                right: inspCollapsed ? 0 : inspWidth.size,
+                bottom: LEGEND_H + (issuesCollapsed ? 0 : issuesHeight.size),
+              }}
             />
           </ReactFlowProvider>
 
@@ -630,7 +690,21 @@ export default function App() {
         style={{ height: issuesHeight.size }}
         inert={issuesCollapsed || undefined}
       >
-        <IssuePanel issues={issues} onFocus={selectOnly} />
+        <IssuePanel
+          issues={issues}
+          ignored={ignoredIssues}
+          showIgnored={showIgnored}
+          onToggleIgnored={() => setShowIgnored((v) => !v)}
+          onIgnore={(issue) => {
+            setIgnoredIssues((prev) => new Set(prev).add(issueKey(issue)))
+            setActiveIssue(null)
+          }}
+          active={activeIssue}
+          onFocus={(issue) => {
+            setSelectedNodeIds([])
+            setActiveIssue(issue)
+          }}
+        />
       </div>
       {!issuesCollapsed && (
         <div

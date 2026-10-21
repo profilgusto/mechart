@@ -1,7 +1,7 @@
 import type { Category, Range } from '../model/types'
 
 /**
- * Os valores da library.json sao polimorficos. Uma tensao pode ser
+ * Os valores dos specs sao polimorficos. Uma tensao pode ser
  * `290`, `{min,nominal,max}`, `{idle,load}`, `{max}` ou `null` + `note`.
  * Tudo vira um Range, e `null` vira `unknown: true` -- nunca zero.
  */
@@ -101,7 +101,7 @@ const CATEGORY_BY_ID: Record<string, Category> = {
   'external-source': 'external',
 }
 
-/** A library.json nao tem campo de categoria; ela vem do prefixo do id. */
+/** Fallback para arquivo de componente sem `category`: vem do prefixo do id. */
 export function categoryOf(id: string): Category {
   if (id.startsWith('sensor-')) return 'sensor'
   return CATEGORY_BY_ID[id] ?? 'outro'

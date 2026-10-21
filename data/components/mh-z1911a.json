@@ -1,0 +1,222 @@
+{
+	"schemaVersion": 1,
+	"id": "mh-z1911a",
+	"description": "Winsen MH-Z1911A NDIR infrared CO2 sensor",
+	"type": {
+		"level-0": "sensor",
+		"level-1": "gas",
+		"level-2": "ndir-co2"
+	},
+	"category": "sensor",
+	"ports": [
+		{
+			"id": "pwr",
+			"label": "Vin / GND",
+			"kind": "power",
+			"dir": "sink",
+			"v": {
+				"min": 4.9,
+				"nom": 5,
+				"max": 5.1
+			},
+			"draw_mA": 30,
+			"peak_mA": 150,
+			"required": true,
+			"count": 1,
+			"src": "input-voltage; average-current 30; peak-current 125; supply-requirement (a fonte deve entregar ao menos 150 mA)",
+			"pins": [
+				{
+					"id": "Vin",
+					"signal": "pos"
+				},
+				{
+					"id": "GND",
+					"signal": "neg"
+				}
+			]
+		},
+		{
+			"id": "uart",
+			"label": "UART (Rx/Tx)",
+			"kind": "data",
+			"dir": "bidir",
+			"protocol": "uart",
+			"level_v": 3.3,
+			"count": 1,
+			"exclusiveWith": [
+				"i2c"
+			],
+			"src": "communications.outputs; communications.interface-level (3,3 V TTL, tolerante a 5 V)",
+			"note": "os manuais v1.1 e v1.3 não publicam baud rate nem conjunto de comandos",
+			"pins": [
+				{
+					"id": "Rx",
+					"signal": "rx"
+				},
+				{
+					"id": "Tx",
+					"signal": "tx"
+				}
+			]
+		},
+		{
+			"id": "i2c",
+			"label": "I²C 0x31 (Rx=SDA, Tx=SCL)",
+			"kind": "data",
+			"dir": "bidir",
+			"protocol": "i2c",
+			"level_v": 3.3,
+			"count": 1,
+			"exclusiveWith": [
+				"uart"
+			],
+			"src": "communications.iic",
+			"note": "selecionado aterrando o pino R/T na energização; 10 kHz",
+			"pins": [
+				{
+					"id": "Rx (SDA)",
+					"signal": "sda"
+				},
+				{
+					"id": "Tx (SCL)",
+					"signal": "scl"
+				}
+			]
+		},
+		{
+			"id": "pwm",
+			"label": "PWM",
+			"kind": "data",
+			"dir": "out",
+			"protocol": "pwm",
+			"level_v": 3.3,
+			"count": 1,
+			"src": "communications.pwm",
+			"note": "período e fórmula de concentração não publicados",
+			"pins": [
+				{
+					"id": "PWM",
+					"signal": "pwm"
+				}
+			]
+		},
+		{
+			"id": "hd",
+			"label": "Hd (calibração)",
+			"kind": "data",
+			"dir": "in",
+			"protocol": "gpio",
+			"level_v": 3.3,
+			"count": 1,
+			"src": "communications.pinout-pin-type[3]",
+			"note": "nível baixo por mais de 7 s calibra o ponto zero",
+			"pins": [
+				{
+					"id": "Hd",
+					"signal": "gpio"
+				}
+			]
+		}
+	],
+	"specs": {
+		"measuring-principle": "NDIR (non-dispersive infrared), with built-in temperature compensation; not oxygen dependent",
+		"detection-range": {
+			"min": 400,
+			"max": 10000,
+			"note": "ppm; factory options are 400-2000, 400-5000 or 400-10000 ppm - confirm which one this unit is"
+		},
+		"resolution": 1,
+		"accuracy": "+/- (50 ppm + 5% of reading)",
+		"input-voltage": {
+			"min": 4.9,
+			"nominal": 5,
+			"max": 5.1
+		},
+		"average-current": 30,
+		"peak-current": 125,
+		"supply-requirement": "the 5 V supply must be able to deliver at least 150 mA, otherwise the reading drops or the sensor fails to work",
+		"preheat-time": 60,
+		"boot-program-time": {
+			"min": 10,
+			"max": 15
+		},
+		"response-time": 120,
+		"working-temperature": {
+			"min": -10,
+			"max": 50
+		},
+		"working-humidity": {
+			"min": 0,
+			"max": 95,
+			"note": "percent RH, no condensation"
+		},
+		"storage-temperature": {
+			"min": -20,
+			"max": 60
+		},
+		"lifespan": 10,
+		"weight": 5,
+		"calibration": {
+			"interval": "at most every 6 months",
+			"zero-point-hardware": "hold the HD pin low for more than 7 s",
+			"zero-point-command": "IIC command 0x03, calibration value 400-1500 ppm",
+			"requirement": "must sit in a stable 400 ppm environment for over 20 minutes before zero-point calibration"
+		},
+		"communications": {
+			"interface-level": "3.3 V TTL (5 V tolerant)",
+			"interface-selection": "R/T pin: left high (default) = UART, tied to GND at power-up = IIC; the level is read right after the boot program",
+			"outputs": [
+				"UART",
+				"IIC",
+				"PWM"
+			],
+			"uart": {
+				"baud-rate": null,
+				"note": "the v1.1 and v1.3 user manuals do not publish the UART frame parameters or command set - still to be confirmed"
+			},
+			"iic": {
+				"address": "0x31 (7-bit)",
+				"clock-frequency": 10000,
+				"byte-order": "big endian, MSB first",
+				"frame": "command word + DATA0..DATAn; reply adds a checksum = lower 8 bits of -(sum of bytes) + 1",
+				"commands": {
+					"0x01": "read measured concentration; returns DATA0*256 + DATA1 in ppm",
+					"0x03": "CO2 calibration, value 400-1500 ppm"
+				}
+			},
+			"pwm": {
+				"note": "PWM output pin is available, but the user manual does not publish the period or the concentration formula - still to be confirmed"
+			},
+			"pinout-pin-type": [
+				{
+					"name": "Vin",
+					"description": "power positive"
+				},
+				{
+					"name": "GND",
+					"description": "power negative"
+				},
+				{
+					"name": "PWM",
+					"description": "PWM output"
+				},
+				{
+					"name": "Hd",
+					"description": "zero point calibration, low for over 7 s"
+				},
+				{
+					"name": "Rx",
+					"description": "UART RXD or IIC SDA"
+				},
+				{
+					"name": "Tx",
+					"description": "UART TXD or IIC SCL"
+				},
+				{
+					"name": "R/T",
+					"description": "UART / IIC interface selection"
+				}
+			]
+		}
+	}
+}

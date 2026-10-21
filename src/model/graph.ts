@@ -7,7 +7,7 @@ export type ArchNode = {
   /** Rotulo livre, ex. "motor traseiro esquerdo". */
   label?: string
   /**
-   * Unidades em serie que este bloco representa. A library.json descreve UMA
+   * Unidades em serie que este bloco representa. A ficha (specs) descreve UMA
    * celula; um pack 3S2P e series: 3, parallel: 2.
    * Serie multiplica a TENSAO.
    */
@@ -25,7 +25,7 @@ export type ArchNode = {
   /**
    * Corrente maxima que uma fonte externa entrega, declarada na montagem. A
    * fonte de bancada nao tem datasheet no catalogo: o numero e do adapter que o
-   * usuario vai ligar, entao fica na instancia e nao no ports.json.
+   * usuario vai ligar, entao fica na instancia e nao no arquivo do componente.
    */
   setCurrent?: number
 }
@@ -261,4 +261,73 @@ export function packTotals(node: ArchNode, component: Component): PackTotals | n
 
 export function nodeLabel(node: ArchNode, component: Component): string {
   return node.label || component.id
+}
+
+/** A, B, ... Z, AA, AB, ... */
+function letters(i: number): string {
+  let s = ''
+  for (let n = i; n >= 0; n = Math.floor(n / 26) - 1) s = String.fromCharCode(65 + (n % 26)) + s
+  return s
+}
+
+function freeName(componentId: string, taken: Set<string>): string {
+  for (let i = 0; ; i++) {
+    const name = `${componentId}-${letters(i)}`
+    if (!taken.has(name)) return name
+  }
+}
+
+/**
+ * Nome de um bloco novo. O primeiro de um tipo leva o id puro; ao entrar o
+ * segundo, o original vira "-A" e o novo "-B", e assim por diante. Nomes que o
+ * usuário escolheu nunca são trocados. `renames` = blocos já existentes que
+ * mudam de nome (o original sem sufixo).
+ */
+export function nextNaming(
+  nodes: ArchNode[],
+  componentId: string,
+): { label?: string; renames: Record<string, string> } {
+  const same = nodes.filter((n) => n.componentId === componentId)
+  if (same.length === 0) return { renames: {} }
+  const taken = new Set(same.map((n) => n.label || componentId))
+  const renames: Record<string, string> = {}
+  for (const n of same) {
+    if (n.label) continue
+    const name = freeName(componentId, taken)
+    taken.add(name)
+    renames[n.id] = name
+  }
+  return { label: freeName(componentId, taken), renames }
+}
+
+/**
+ * Projetos antigos: blocos repetidos sem rótulo, ou com o "id (2)" do esquema
+ * anterior, ganham o sufixo em letra. Rótulos do usuário ficam como estão.
+ */
+export function normalizeNames(nodes: ArchNode[]): ArchNode[] {
+  const byComponent = new Map<string, ArchNode[]>()
+  for (const n of nodes) byComponent.set(n.componentId, [...(byComponent.get(n.componentId) ?? []), n])
+  const out = new Map<string, string>()
+  for (const [id, group] of byComponent) {
+    if (group.length < 2) continue
+    const legacy = new RegExp(`^${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\(\\d+\\)$`)
+    const auto = group.filter((n) => !n.label || legacy.test(n.label))
+    const taken = new Set(group.filter((n) => !auto.includes(n)).map((n) => n.label!))
+    for (const n of auto) {
+      const name = freeName(id, taken)
+      taken.add(name)
+      out.set(n.id, name)
+    }
+  }
+  return out.size === 0 ? nodes : nodes.map((n) => (out.has(n.id) ? { ...n, label: out.get(n.id) } : n))
+}
+
+/** Nome da porta como o card a mostra (ex.: "BO1 / BO2"), nunca o id interno. */
+export function portName(port: Port): string {
+  return port.label ?? port.id
+}
+
+/** "componente (BO1 / BO2)": o par que o usuário localiza no card. */
+export function portRef(node: ArchNode, component: Component, port: Port): string {
+  return `${nodeLabel(node, component)} (${portName(port)})`
 }

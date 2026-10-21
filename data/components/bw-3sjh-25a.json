@@ -1,0 +1,106 @@
+{
+	"schemaVersion": 1,
+	"id": "bw-3sjh-25a",
+	"description": "Heltec BMS 3S 25A protection board with balancing, for 3.7V lithium-ion cells; board marking BW-3SJH-25A",
+	"type": "bms",
+	"category": "power",
+	"ports": [
+		{
+			"id": "pack",
+			"label": "B- / B1 / B2 / B+",
+			"kind": "power",
+			"dir": "sink",
+			"v": {
+				"min": 7.5,
+				"nom": 11.1,
+				"max": 12.6
+			},
+			"required": true,
+			"count": 1,
+			"only": [
+				"battery-cell"
+			],
+			"onlyNote": "O carregador e as cargas vão em P+/P-; B+/B- é só para as células.",
+			"src": "cells-in-series 3; cell-chemistry (3,7 V/célula → 11,1 V; 12,6 V cheia); mínimo = 3 × corte de descarga de 2,5 V do battery-cell",
+			"note": "quatro fios para 3 células em série, incluindo os taps de balanceamento B1 e B2. A faixa cobre a excursão inteira do pack, do corte de descarga à carga completa — é justamente essa janela que a placa protege",
+			"pins": [
+				{
+					"id": "B-",
+					"signal": "neg",
+					"note": "negativo do pack"
+				},
+				{
+					"id": "B1",
+					"signal": "tap1",
+					"note": "junção entre a célula 1 e a 2"
+				},
+				{
+					"id": "B2",
+					"signal": "tap2",
+					"note": "junção entre a célula 2 e a 3"
+				},
+				{
+					"id": "B+",
+					"signal": "pos",
+					"note": "positivo do pack"
+				}
+			]
+		},
+		{
+			"id": "p",
+			"label": "P+ / P- (porta comum)",
+			"kind": "power",
+			"dir": "bidir",
+			"v": {
+				"min": 7.5,
+				"nom": 11.1,
+				"max": 12.6
+			},
+			"supply_mA": 25000,
+			"count": 4,
+			"src": "connections; continuous-current 25 A",
+			"note": "porta COMUM: carga e carregador usam os mesmos dois terminais. É por aqui que o carregador deve entrar — ligá-lo em B+/B- passa por fora dos MOSFETs de proteção, que chaveiam a linha P-, e o pack fica sem proteção de sobrecarga",
+			"pins": [
+				{
+					"id": "P+",
+					"signal": "pos"
+				},
+				{
+					"id": "P-",
+					"signal": "neg",
+					"note": "os MOSFETs de proteção chaveiam esta linha"
+				}
+			]
+		}
+	],
+	"specs": {
+		"cells-in-series": 3,
+		"cell-chemistry": "lithium-ion, 3.7 V nominal per cell (12.6 V fully charged pack)",
+		"continuous-current": 25,
+		"balancing": "passive balancing version (the board carries balance resistors); the active 1.2 A balancer described in the listing is a different option of the same advertisement",
+		"connections": {
+			"B-": "pack negative",
+			"B1": "junction between cell 1 and cell 2 (3.7 V tap)",
+			"B2": "junction between cell 2 and cell 3 (7.4 V tap)",
+			"B+": "pack positive (11.1 V tap)",
+			"P+": "load / charger positive",
+			"P-": "load / charger negative (the protection MOSFETs switch this line)"
+		},
+		"protections": [
+			"overcharge",
+			"over-discharge",
+			"overcurrent",
+			"short circuit"
+		],
+		"thresholds": {
+			"overcharge-voltage": null,
+			"overcharge-recovery-voltage": null,
+			"over-discharge-voltage": null,
+			"over-discharge-recovery-voltage": null,
+			"overcurrent-trip": null,
+			"note": "the seller publishes a parameter table headed \"3S40A LiFePO4\" (3.7 V overcharge threshold, 2.1 V over-discharge, 40 A continuous), which belongs to a different board of the same listing and does NOT apply to this 3S 25A lithium-ion version - the real thresholds for this board are not published and must be measured"
+		},
+		"certification": "CE (claimed by the seller)",
+		"note": "a protection board, not a charger and not a battery gauge: it has no communication interface, does not report state of charge and does not balance-charge on its own - the pack still needs a proper CC-CV charger"
+	}
+}

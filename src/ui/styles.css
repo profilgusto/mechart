@@ -340,6 +340,24 @@ body {
   font-size: 13px;
 }
 .toolbar__hint { color: var(--muted); font-size: 12px; }
+.toolbar__hint + .theme-toggle { margin-left: auto; }
+
+.theme-toggle {
+  flex: none;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.theme-toggle:hover { background: var(--bg); }
 
 /* Separa o titulo + nome do projeto do resto dos controles da barra. */
 .toolbar__divider {
@@ -477,7 +495,6 @@ body {
 .node--selected { outline: 2px solid var(--cat); outline-offset: 2px; }
 .node--error { border-color: #d14343; box-shadow: 0 0 0 2px rgb(209 67 67 / 0.25); }
 .node--warning { border-color: #c98a12; }
-.node--unverifiable { border-style: dashed; }
 
 /* Fronteira do projeto: alimentação de fora. Borda tracejada para ler como
    limite, não como peça -- o selo "fora do projeto" diz o resto. */
@@ -485,6 +502,7 @@ body {
   border-style: dashed;
   border-width: 1.5px;
   border-top-width: 3px;
+  border-top-style: solid;
   background: repeating-linear-gradient(
     45deg,
     var(--panel),
@@ -655,10 +673,41 @@ body {
 .mecha-minimap {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 0 0 6px 6px;
+  box-sizing: border-box;
   width: 150px;
   height: 100px;
+  overflow: hidden;
 }
+.mecha-zoom {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  box-sizing: border-box;
+  width: 150px; /* mesma largura do minimapa (Canvas.tsx) */
+  padding: 3px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+}
+.mecha-zoom button {
+  width: 28px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.mecha-zoom button:hover { color: var(--text, inherit); background: color-mix(in srgb, var(--muted) 18%, transparent); }
+.mecha-zoom button:focus-visible { outline: 2px solid var(--accent, currentColor); outline-offset: -2px; }
 .react-flow__minimap-mask { fill: color-mix(in srgb, var(--bg) 70%, transparent); }
 
 /* ---- legenda ---- */
@@ -700,7 +749,13 @@ body {
   padding: 10px 16px 14px;
 }
 .issues--empty { color: var(--muted); font-size: 12px; padding: 12px 16px; }
-.issues__head { display: flex; gap: 6px; margin-bottom: 8px; }
+.issues__head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.issues__title {
+  margin: 0 8px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
 
 .tag {
   font-size: 10px;
@@ -715,6 +770,98 @@ body {
   :root:not([data-theme='light']) .tag--error { background: #3a1c1c; color: #f0a2a2; }
   :root:not([data-theme='light']) .tag--warning { background: #382a10; color: #f0cc85; }
 }
+
+.tag--ignored {
+  position: relative;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+  background: #e4e6e9;
+  color: #4a4f55;
+}
+.tag--ignored-on { background: #4a4f55; color: #e4e6e9; }
+.tag--ignored::after {
+  content: '• ' attr(data-tip);
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 6px);
+  white-space: nowrap;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
+  z-index: 5;
+}
+.tag--ignored:hover::after { opacity: 1; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .tag--ignored { background: #3a3e44; color: #c9cdd2; }
+  :root:not([data-theme='light']) .tag--ignored-on { background: #c9cdd2; color: #2a2d31; }
+}
+:root[data-theme='dark'] .tag--ignored { background: #3a3e44; color: #c9cdd2; }
+:root[data-theme='dark'] .tag--ignored-on { background: #c9cdd2; color: #2a2d31; }
+
+.issues__empty { color: var(--muted); font-size: 12px; padding: 4px 0; }
+.issues__item { position: relative; }
+.issue--ignored { opacity: 0.55; }
+.issue__ignore {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  opacity: 0.7;
+}
+.issue__ignore:hover { opacity: 1; color: var(--text); background: color-mix(in srgb, var(--text) 10%, transparent); }
+
+.confirm-backdrop { position: fixed; inset: 0; z-index: 90; }
+.confirm-pop {
+  position: fixed;
+  z-index: 91;
+  width: 240px;
+  padding: 10px 12px;
+  font-size: 12px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+.confirm-pop p { margin: 0 0 10px; }
+.confirm-pop__actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+.confirm-pop__yes {
+  border: none;
+  background: transparent;
+  color: #c24141;
+  font: inherit;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.confirm-pop__yes:hover { text-decoration: underline; }
+.confirm-pop__cancel {
+  font: inherit;
+  cursor: pointer;
+  padding: 3px 10px;
+  border-radius: 4px;
+  background: transparent;
+  color: #2f6fd1;
+  border: 1px solid #2f6fd1;
+}
+.confirm-pop__cancel:hover { background: color-mix(in srgb, #2f6fd1 12%, transparent); }
 
 .issues__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 
@@ -1324,3 +1471,152 @@ body {
   border-top: 1px solid var(--border);
   text-align: center;
 }
+
+/* Foco na selecao: o que nao esta ligado ao componente selecionado esmaece. */
+.react-flow__node,
+.react-flow__edge {
+  transition: opacity 0.15s ease;
+}
+.react-flow__node.dimmed,
+.react-flow__edge.dimmed {
+  opacity: 0.2;
+}
+
+/* Aviso clicado: continua marcado enquanto o foco no canvas durar. */
+.issue--active,
+.issue--active:hover {
+  background: color-mix(in srgb, var(--text) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 35%, transparent);
+}
+
+/* ---- aviso do no: icone no topo, dica no hover, detalhes no clique ---- */
+
+.node__issue {
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid var(--panel);
+  background: var(--lvl);
+  color: #fff;
+  font: 700 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  cursor: pointer;
+  opacity: 0.85;
+}
+.node__issue:hover { opacity: 1; }
+.node__issue--error { --lvl: #d14343; }
+.node__issue--warning { --lvl: #c98a12; }
+.node__issue--unverifiable { --lvl: var(--unknown); }
+
+.issue-tip, .issue-pop {
+  position: fixed;
+  z-index: 1000;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.25);
+  font-size: 12px;
+}
+.issue-tip { padding: 6px 10px; max-width: 220px; pointer-events: none; }
+.issue-pop { width: 300px; max-height: 280px; overflow: auto; padding: 8px 10px; }
+.issue-pop__head { display: flex; justify-content: space-between; align-items: center; font-weight: 600; margin-bottom: 6px; }
+.issue-pop__close { border: none; background: transparent; color: var(--muted); cursor: pointer; font-size: 16px; line-height: 1; }
+.issue-pop__close:hover { color: var(--text); }
+.issue-pop__item { border-left: 3px solid var(--lvl); padding: 3px 8px; margin-top: 4px; }
+.issue-pop__item--error { --lvl: #d14343; }
+.issue-pop__item--warning { --lvl: #c98a12; }
+.issue-pop__item--unverifiable { --lvl: var(--unknown); }
+.issue-pop__badge { display: block; font-size: 10px; font-weight: 700; color: var(--muted); }
+
+/* ---- renomear o bloco ---- */
+
+.node__head { position: relative; }
+.node__pencil {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.node__head:hover .node__pencil, .node__pencil:focus-visible { opacity: 0.8; }
+.node__pencil:hover { opacity: 1; color: var(--text); }
+
+.node__rename { position: relative; }
+.node__rename-input {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--cat, var(--border));
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+.node__rename-actions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.25);
+}
+.node__rename-actions button {
+  font: inherit;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.node__rename-actions button:first-child { color: var(--text); font-weight: 600; }
+.node__rename-actions button:hover:not(:disabled) { color: var(--text); border-color: var(--muted); }
+.node__rename-actions button:disabled { opacity: 0.4; cursor: default; }
+
+/* Dica ao lado do card, no hover do lapis. */
+.node__pencil::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 12px);
+  transform: translateY(-50%);
+  z-index: 10;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 400;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.25);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.node__pencil:hover::after { opacity: 1; }

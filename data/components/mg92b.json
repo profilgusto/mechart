@@ -1,0 +1,96 @@
+{
+	"schemaVersion": 1,
+	"id": "mg92b",
+	"description": "TowerPro MG92B digital RC servo, metal gear, for pan/tilt of the stereo camera",
+	"type": {
+		"level-0": "motor",
+		"level-1": "servo",
+		"level-2": "digital-metal-gear"
+	},
+	"category": "actuation",
+	"ports": [
+		{
+			"id": "pwr",
+			"label": "alimentação (fio +/-, cor não confirmada)",
+			"kind": "power",
+			"dir": "sink",
+			"v": {
+				"min": 5,
+				"max": 6.6
+			},
+			"draw_mA": null,
+			"required": true,
+			"count": 1,
+			"src": "operating-voltage",
+			"note": "corrente (sem carga e de stall) não publicada pelo fabricante — a confirmar antes de dimensionar o trilho de 5-6 V; cores dos fios não confirmadas na página oficial (conector JR de mercado costuma ser vermelho/preto ou marrom, mas não foi verificado para este modelo)",
+			"pins": [
+				{
+					"id": "pos",
+					"signal": "pos"
+				},
+				{
+					"id": "neg",
+					"signal": "neg"
+				}
+			]
+		},
+		{
+			"id": "pwm-in",
+			"label": "sinal PWM (fio de sinal, cor não confirmada)",
+			"kind": "data",
+			"dir": "in",
+			"protocol": "pwm",
+			"level_v": null,
+			"count": 1,
+			"src": "dead-band-width; connector",
+			"note": "largura de pulso e frequência do PWM não publicadas pelo fabricante para este modelo — a confirmar (padrão RC costuma ser 1-2 ms @ 50 Hz, mas não está no datasheet)",
+			"pins": [
+				{
+					"id": "sinal",
+					"signal": "pwm"
+				}
+			]
+		}
+	],
+	"specs": {
+		"source": "https://towerpro.com.tw/product/mg92b/",
+		"weight": 13.8,
+		"operating-voltage": {
+			"min": 5,
+			"max": 6.6
+		},
+		"stall-torque": [
+			{
+				"voltage": 5,
+				"torque": 3.1
+			},
+			{
+				"voltage": 6,
+				"torque": 3.5
+			}
+		],
+		"operating-speed": [
+			{
+				"voltage": 5,
+				"seconds-per-60-degrees": 0.13
+			},
+			{
+				"voltage": 6,
+				"seconds-per-60-degrees": 0.08
+			}
+		],
+		"gear-type": "metal gear",
+		"bearing": "double ball bearing",
+		"case": "middle with alloy case",
+		"connector": "JR (fits JR and Futaba)",
+		"dead-band-width": 1,
+		"wire-length": 25,
+		"working-temperature": {
+			"min": 0,
+			"max": 55
+		},
+		"certification": "CE / RoHS",
+		"accessories": "servo arms and screws included",
+		"not-published": "rotation angle/travel range, current draw (idle/stall), PWM pulse width range, PWM frequency and gear ratio are not stated on the manufacturer page and are left out"
+	}
+}

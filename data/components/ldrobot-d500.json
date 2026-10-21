@@ -1,0 +1,200 @@
+{
+	"schemaVersion": 1,
+	"id": "ldrobot-d500",
+	"description": "LDROBOT D500 Development Kit",
+	"type": {
+		"level-0": "sensor",
+		"level-1": "lidar",
+		"level-2": "mechanical"
+	},
+	"category": "sensor",
+	"ports": [
+		{
+			"id": "pwr",
+			"label": "P5V / GND",
+			"kind": "power",
+			"dir": "sink",
+			"v": {
+				"min": 4.5,
+				"nom": 5,
+				"max": 5.5
+			},
+			"draw_mA": 290,
+			"required": true,
+			"count": 1,
+			"src": "input-voltage; average-current",
+			"pins": [
+				{
+					"id": "P5V",
+					"signal": "pos"
+				},
+				{
+					"id": "GND",
+					"signal": "neg"
+				}
+			]
+		},
+		{
+			"id": "uart-tx",
+			"label": "Tx",
+			"kind": "data",
+			"dir": "out",
+			"protocol": "uart",
+			"level_v": 3.3,
+			"count": 1,
+			"src": "communications.connector.pinout[1]",
+			"note": "unidirecional: envia dados continuamente, não aceita comandos",
+			"pins": [
+				{
+					"id": "Tx",
+					"signal": "tx"
+				}
+			]
+		},
+		{
+			"id": "pwm-in",
+			"label": "PWM",
+			"kind": "data",
+			"dir": "in",
+			"protocol": "pwm",
+			"level_v": 3.3,
+			"count": 1,
+			"src": "communications.connector.pinout[2]",
+			"note": "controle de velocidade do motor; aterrado usa o controle interno",
+			"pins": [
+				{
+					"id": "PWM",
+					"signal": "pwm"
+				}
+			]
+		},
+		{
+			"id": "usb",
+			"label": "USB (placa adaptadora)",
+			"kind": "data",
+			"dir": "bidir",
+			"protocol": "usb",
+			"count": 1,
+			"exclusiveWith": [
+				"uart-tx"
+			],
+			"src": "communications.usb-adapter-board",
+			"note": "adaptador USB-UART incluso no kit; caminho alternativo ao Tx direto"
+		}
+	],
+	"specs": {
+		"input-voltage": {
+			"min": 4.5,
+			"nominal": 5,
+			"max": 5.5
+		},
+		"average-current": 290,
+		"power-consumption": 1.45,
+		"detection-range": {
+			"min": 0.03,
+			"max-reflectivity-80": 12,
+			"max-reflectivity-4": 8
+		},
+		"scan-frequency": {
+			"min": 6,
+			"nominal": 10,
+			"max": 13
+		},
+		"angle-resolution": 0.72,
+		"communications": {
+			"primary-interface": "UART (3.3V TTL), one-way: sends data continuously after power-up, accepts no commands",
+			"uart": {
+				"baud-rate": 230400,
+				"data-bits": 8,
+				"stop-bits": 1,
+				"parity": "none",
+				"flow-control": "none"
+			},
+			"connector": {
+				"type": "ZH1.5T-4P (1.5mm pitch)",
+				"pinout": [
+					{
+						"pin": 1,
+						"name": "Tx",
+						"type": "output",
+						"description": "LiDAR data output",
+						"voltage": {
+							"min": 0,
+							"nominal": 3.3,
+							"max": 3.5
+						}
+					},
+					{
+						"pin": 2,
+						"name": "PWM",
+						"type": "input",
+						"description": "motor speed control; tie to GND to use internal speed control",
+						"voltage": {
+							"min": 0,
+							"max": 3.3
+						}
+					},
+					{
+						"pin": 3,
+						"name": "GND",
+						"type": "power",
+						"description": "negative",
+						"voltage": {
+							"nominal": 0
+						}
+					},
+					{
+						"pin": 4,
+						"name": "P5V",
+						"type": "power",
+						"description": "positive",
+						"voltage": {
+							"min": 4.5,
+							"nominal": 5,
+							"max": 5.5
+						}
+					}
+				]
+			},
+			"usb-adapter-board": {
+				"included-in-kit": true,
+				"description": "USB-to-UART adapter board + cables, connects the sensor to a PC or SBC as a USB serial port"
+			},
+			"data-protocol": {
+				"name": "LDROBOT LD19 / STL-19P measurement packet",
+				"header": "0x54",
+				"ver-len": "0x2C",
+				"points-per-packet": 12,
+				"packet-length": 47,
+				"fields": "header(1) + ver_len(1) + speed(2) + start_angle(2) + 12x[distance(2) + intensity(1)] + end_angle(2) + timestamp(2) + crc8(1)",
+				"checksum": "CRC-8 (table-based, over all preceding bytes)",
+				"distance-unit": "millimeters",
+				"angle-unit": "0.01 degrees",
+				"speed-unit": "degrees per second",
+				"timestamp-unit": "milliseconds (rolls over at 30000)"
+			},
+			"motor-speed-control": {
+				"internal": "default when PWM pin is grounded; 10 +/- 0.1 Hz, stable within 3 s after power-up",
+				"external-pwm": {
+					"frequency": {
+						"min": 20000,
+						"recommended": 30000,
+						"max": 50000
+					},
+					"duty-cycle": {
+						"min": 45,
+						"max": 55,
+						"note": "open interval, 45% and 55% excluded; at least 100 ms continuous input to trigger; latches until power cycle"
+					}
+				}
+			},
+			"software-support": "ROS1 and ROS2 drivers, Linux SDK, Windows point cloud viewer"
+		},
+		"working-temperature": {
+			"min": -10,
+			"nominal": 25,
+			"max": 45
+		},
+		"weight": 46
+	}
+}

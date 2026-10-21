@@ -1,0 +1,214 @@
+{
+	"schemaVersion": 1,
+	"id": "as7343",
+	"description": "GY-AS7343 breakout board with ams OSRAM AS7343 14-channel multi-spectral sensor and on-board white LED",
+	"type": {
+		"level-0": "sensor",
+		"level-1": "light",
+		"level-2": "spectral"
+	},
+	"category": "sensor",
+	"ports": [
+		{
+			"id": "pwr",
+			"label": "VIN / GND",
+			"kind": "power",
+			"dir": "sink",
+			"v": {
+				"min": 2,
+				"max": 5
+			},
+			"draw_mA": 0.21,
+			"required": true,
+			"count": 1,
+			"src": "board.supply-voltage (vendor listing); current.active.typical",
+			"note": "VIN da placa GY-AS7343, com regulador + level-shifter a bordo, confirmado em 2–5 V pelo anúncio do vendedor (não é o VDD de 1,7–1,98 V do chip nu, que fica interno à placa). Corrente do chip via I2C, não inclui o driver do LED (4–134 mA) nem o consumo do regulador/level-shifter da placa, que não é publicado",
+			"pins": [
+				{
+					"id": "VIN",
+					"signal": "pos"
+				},
+				{
+					"id": "GND",
+					"signal": "neg"
+				}
+			]
+		},
+		{
+			"id": "i2c",
+			"label": "I²C 0x39 (SCL/SDA)",
+			"kind": "data",
+			"dir": "bidir",
+			"protocol": "i2c",
+			"level_v": null,
+			"count": 1,
+			"src": "communications.interface; communications.pinout",
+			"note": "pinos digitais do chip toleram até 3,6 V; o nível lógico da placa não está publicado",
+			"pins": [
+				{
+					"id": "SDA",
+					"signal": "sda"
+				},
+				{
+					"id": "SCL",
+					"signal": "scl"
+				}
+			]
+		}
+	],
+	"specs": {
+		"channels": {
+			"total": 14,
+			"description": "11 channels in the visible spectrum, 1 near-infrared, 1 clear and 1 flicker detection channel; roughly 380 to 1000 nm",
+			"peak-wavelengths": [
+				{
+					"name": "F1",
+					"peak": 405,
+					"fwhm": 30
+				},
+				{
+					"name": "F2",
+					"peak": 425,
+					"fwhm": 22
+				},
+				{
+					"name": "FZ",
+					"peak": 450,
+					"fwhm": 55
+				},
+				{
+					"name": "F3",
+					"peak": 475,
+					"fwhm": 30
+				},
+				{
+					"name": "F4",
+					"peak": 515,
+					"fwhm": 40
+				},
+				{
+					"name": "FY",
+					"peak": 555,
+					"fwhm": 100
+				},
+				{
+					"name": "F5",
+					"peak": 550,
+					"fwhm": 35
+				},
+				{
+					"name": "FXL",
+					"peak": 600,
+					"fwhm": 80
+				},
+				{
+					"name": "F6",
+					"peak": 640,
+					"fwhm": 50
+				},
+				{
+					"name": "F7",
+					"peak": 690,
+					"fwhm": 55
+				},
+				{
+					"name": "F8",
+					"peak": 745,
+					"fwhm": 60
+				},
+				{
+					"name": "NIR",
+					"peak": 855,
+					"fwhm": 54
+				}
+			]
+		},
+		"supply-voltage": {
+			"min": 1.7,
+			"nominal": 1.8,
+			"max": 1.98,
+			"note": "VDD of the chip; digital and analog pins tolerate up to 3.6 V. This is NOT the breakout board's input voltage — see board.supply-voltage below"
+		},
+		"board": {
+			"description": "GY-AS7343 breakout (PENGHEKEJI/generic, 4-pin VIN/GND/SCL/SDA) — on-board regulator plus I2C level-shifter",
+			"supply-voltage": {
+				"min": 2,
+				"max": 5,
+				"note": "VIN range as published by the seller on the specific listing purchased (AliExpress, item 1005008569505325: \"AS7341 AS7343 com conversão de nível, fonte de alimentação 2-5V\"); not an ams OSRAM datasheet figure, but the vendor spec for this exact board"
+			}
+		},
+		"current": {
+			"active": {
+				"typical": 0.21,
+				"max": 0.28
+			},
+			"idle": {
+				"typical": 0.04,
+				"max": 0.06
+			},
+			"sleep": {
+				"typical": 0.0007,
+				"max": 0.005
+			},
+			"note": "does not include current through the LED driver pin"
+		},
+		"gain": {
+			"settings": "AGAIN from 0.5x to 2048x",
+			"note": "13 programmable gain steps (0.5x, 1x, 2x, 4x, 8x, 16x, 32x, 64x, 128x, 256x, 512x, 1024x, 2048x); AGAIN register (0xC6)"
+		},
+		"integration-time": {
+			"step": 2.78,
+			"typical": 50,
+			"note": "milliseconds; t_int = (ATIME + 1) x (ASTEP + 1) x 2.78 us"
+		},
+		"adc-noise": 0.05,
+		"half-cone-angle": 40,
+		"flicker-detection": "dedicated channel, flags ambient light flicker (e.g. 50/60 Hz)",
+		"led-driver": {
+			"description": "integrated LED driver (LDR pin) for the on-board white LED, used for reflective measurements",
+			"current-range": {
+				"min": 4,
+				"max": 258,
+				"step": 2,
+				"default": 12,
+				"note": "7-bit LED_DRIVE field, register 0xCD; LED_ACT bit enables/disables the driver"
+			}
+		},
+		"working-temperature": {
+			"min": -30,
+			"max": 85
+		},
+		"working-humidity": {
+			"min": 5,
+			"max": 85,
+			"note": "percent RH, non-condensing"
+		},
+		"communications": {
+			"interface": "I2C, 7-bit addressing, standard and full speed",
+			"address": "0x39",
+			"clock-frequency": {
+				"max": 1000000
+			},
+			"register-access": "8-bit auto-incrementing register pointer; 16-bit fields must be read low byte first (latching)",
+			"pinout": [
+				{
+					"name": "VIN",
+					"description": "supply input to the board regulator"
+				},
+				{
+					"name": "GND",
+					"description": "ground"
+				},
+				{
+					"name": "SCL",
+					"description": "I2C clock"
+				},
+				{
+					"name": "SDA",
+					"description": "I2C data"
+				}
+			],
+			"extra-pins": "the chip also provides INT (interrupt) and a programmable GPIO for trigger/sync; check whether this board breaks them out"
+		}
+	}
+}

@@ -1,0 +1,137 @@
+{
+	"schemaVersion": 1,
+	"id": "lsm22100",
+	"description": "GXIVISION LSM22100 synchronized dual-lens USB stereo camera module, 4.2 mm / 54 degree lens version, with 1.5 m USB cable",
+	"type": {
+		"level-0": "sensor",
+		"level-1": "camera",
+		"level-2": "stereo"
+	},
+	"category": "sensor",
+	"ports": [
+		{
+			"id": "usb",
+			"label": "USB 2.0 UVC",
+			"kind": "data",
+			"dir": "bidir",
+			"protocol": "usb",
+			"count": 1,
+			"exclusiveWith": [
+				"pwr"
+			],
+			"vbus": "device",
+			"draw_mA": 182,
+			"src": "communications.interface"
+		},
+		{
+			"id": "pwr",
+			"label": "5 V (barramento USB)",
+			"kind": "power",
+			"dir": "sink",
+			"v": {
+				"nom": 5
+			},
+			"draw_mA": 182,
+			"required": true,
+			"count": 1,
+			"exclusiveWith": [
+				"usb"
+			],
+			"src": "input-voltage (5 V ±5%); power-consumption 0,91 W ÷ 5 V = 182 mA (calculado)",
+			"note": "alimentado pelo próprio cabo USB; a corrente é o quociente de dois valores de datasheet, não uma estimativa"
+		}
+	],
+	"specs": {
+		"synchronization": "both sensors capture the same frame at the same rate and resolution and are combined into a single side-by-side frame",
+		"baseline": 85,
+		"lens": {
+			"focal-length": 4.2,
+			"field-of-view": 54,
+			"mount": "M12, with IR filter",
+			"distortion": "low distortion version",
+			"other-options": "the same module is sold with 1.3, 2.4, 3 and 6 mm lenses, covering 180 to 54 degrees"
+		},
+		"sensor": {
+			"size": "1/4 inch",
+			"package": "CSP bare die",
+			"resolution-per-eye": "1 MP (1280x720)",
+			"pixel-size": 3,
+			"shutter": "electronic rolling shutter"
+		},
+		"max-resolution": "2560x720 (side by side)",
+		"frame-rates": {
+			"binocular": [
+				{
+					"format": "MJPG",
+					"resolution": "2560x720",
+					"fps": 30
+				},
+				{
+					"format": "YUY2",
+					"resolution": "1280x720",
+					"fps": 5
+				},
+				{
+					"format": "MJPG",
+					"resolution": "1280x480",
+					"fps": 30
+				},
+				{
+					"format": "YUY2",
+					"resolution": "1280x480",
+					"fps": 15
+				}
+			],
+			"monocular": [
+				{
+					"format": "MJPG",
+					"resolution": "1280x720",
+					"fps": 30
+				},
+				{
+					"format": "YUY2",
+					"resolution": "1280x720",
+					"fps": 10
+				},
+				{
+					"format": "MJPG",
+					"resolution": "640x480",
+					"fps": 30
+				},
+				{
+					"format": "YUY2",
+					"resolution": "640x480",
+					"fps": 30
+				}
+			]
+		},
+		"focus": "fixed, object distance 5 cm to infinity",
+		"ir-filter": {
+			"cutoff": 650,
+			"tolerance": 10
+		},
+		"auto-functions": "AGC, AEC and white balance automatic; brightness, contrast, saturation, white balance, gamma, definition and exposure adjustable",
+		"input-voltage": {
+			"nominal": 5,
+			"tolerance": 5,
+			"note": "DC 5 V +/- 5 percent, taken from the USB bus"
+		},
+		"power-consumption": 0.91,
+		"working-temperature": {
+			"min": -30,
+			"max": 70,
+			"stable-image-min": 0,
+			"stable-image-max": 50
+		},
+		"certification": "FCC / CE / RoHS",
+		"communications": {
+			"interface": "USB 2.0, UVC class, driver free",
+			"output-formats": [
+				"MJPEG",
+				"YUY2"
+			],
+			"host-support": "Windows, Linux (V4L2), macOS, Android (OTG); works with OpenCV and common webcam software",
+			"note": "appears to the host as a single UVC camera delivering a side-by-side frame; the left and right images must be split in software"
+		}
+	}
+}

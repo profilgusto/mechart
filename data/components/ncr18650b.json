@@ -1,0 +1,112 @@
+{
+	"schemaVersion": 1,
+	"id": "ncr18650b",
+	"description": "18650 lithium-ion cell sold as Panasonic NCR18650B with solder tabs; the listing brand is \"Generica / compatible\", so authenticity is not confirmed",
+	"type": "battery-cell",
+	"category": "power",
+	"instance": {
+		"pack": true,
+		"unit": {
+			"capacity_mAh": 3350,
+			"capacity_src": "capacity.nominal-at-25c-typical — a nota do components.json manda usar o valor de datasheet como figura de projeto, não os 3450 mAh anunciados pelo vendedor",
+			"weight_g": 47.5,
+			"weight_src": "weight"
+		}
+	},
+	"ports": [
+		{
+			"id": "out",
+			"label": "+ / - (descarga)",
+			"kind": "power",
+			"dir": "source",
+			"v": {
+				"min": 2.5,
+				"nom": 3.6,
+				"max": 4.2
+			},
+			"supply_mA": null,
+			"count": 1,
+			"src": "nominal-voltage; charging.voltage 4,2; discharge.cut-off-voltage 2,5; discharge.max-continuous-current = null",
+			"note": "a corrente contínua máxima NÃO consta na folha da Panasonic (as curvas vão até 2C, ~6,7 A). Os 10 A do vendedor não podem ser usados para dimensionar",
+			"pins": [
+				{
+					"id": "+",
+					"signal": "pos"
+				},
+				{
+					"id": "-",
+					"signal": "neg"
+				}
+			]
+		},
+		{
+			"id": "chg",
+			"label": "+ / - (carga)",
+			"kind": "power",
+			"dir": "sink",
+			"v": {
+				"nom": 4.2
+			},
+			"draw_mA": 1625,
+			"count": 1,
+			"src": "charging.voltage; charging.standard-current",
+			"note": "CC-CV, corte em 65 mA; sem circuito de proteção — o pack precisa de BMS e carregador próprios",
+			"pins": [
+				{
+					"id": "+",
+					"signal": "pos"
+				},
+				{
+					"id": "-",
+					"signal": "neg"
+				}
+			]
+		}
+	],
+	"specs": {
+		"chemistry": "lithium-ion (NCA)",
+		"format": "18650 cylindrical, with welding tabs",
+		"nominal-voltage": 3.6,
+		"capacity": {
+			"rated-at-20c-min": 3200,
+			"nominal-at-25c-min": 3250,
+			"nominal-at-25c-typical": 3350,
+			"listed-by-seller": 3450,
+			"note": "mAh; the seller advertises 3450 mAh, above the 3350 mAh typical of the genuine datasheet - treat the datasheet value as the design figure"
+		},
+		"charging": {
+			"method": "CC-CV",
+			"voltage": 4.2,
+			"standard-current": 1625,
+			"time": 4,
+			"cut-off-current": 65,
+			"note": "current in mA, time in hours"
+		},
+		"discharge": {
+			"cut-off-voltage": 2.5,
+			"max-continuous-current": null,
+			"seller-claim": 10,
+			"note": "amperes; the Panasonic specification sheet does not state a maximum continuous discharge current (its curves go up to 2C, about 6.7 A); the 10 A claimed by the seller is not backed by any datasheet and must not be used for sizing"
+		},
+		"working-temperature": {
+			"charge": {
+				"min": 10,
+				"max": 45
+			},
+			"discharge": {
+				"min": -20,
+				"max": 60
+			},
+			"storage": {
+				"min": -20,
+				"max": 50
+			}
+		},
+		"energy-density": {
+			"volumetric": 676,
+			"gravimetric": 243
+		},
+		"weight": 47.5,
+		"note": "no protection circuit and no BMS included; a pack built from these cells needs protection, balancing and a charger"
+	}
+}

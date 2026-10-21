@@ -1,0 +1,250 @@
+{
+	"schemaVersion": 1,
+	"id": "bno086",
+	"description": "VR IMU breakout board with CEVA/Bosch BNO086 (BNO08X family), Qwiic connector",
+	"type": {
+		"level-0": "sensor",
+		"level-1": "imu",
+		"level-2": "9-axis"
+	},
+	"category": "sensor",
+	"ports": [
+		{
+			"id": "pwr",
+			"label": "3V3 / GND (Qwiic)",
+			"kind": "power",
+			"dir": "sink",
+			"v": {
+				"nom": 3.3
+			},
+			"draw_mA": 10.68,
+			"required": true,
+			"count": 1,
+			"src": "supply-voltage.note (barramento Qwiic é 3,3 V); current.fusion-9-axis-100hz",
+			"note": "VDD deve energizar antes ou junto com VDDIO",
+			"pins": [
+				{
+					"id": "3V3",
+					"signal": "pos"
+				},
+				{
+					"id": "GND",
+					"signal": "neg"
+				}
+			]
+		},
+		{
+			"id": "i2c",
+			"label": "I²C 0x4A/0x4B (Qwiic)",
+			"kind": "data",
+			"dir": "bidir",
+			"protocol": "i2c",
+			"level_v": 3.3,
+			"count": 1,
+			"exclusiveWith": [
+				"spi",
+				"uart"
+			],
+			"src": "communications.i2c; communications.board-connector",
+			"note": "selecionado por PS1/PS0 = 00 no reset; não suporta polling, exige a linha H_INTN",
+			"pins": [
+				{
+					"id": "SDA",
+					"signal": "sda"
+				},
+				{
+					"id": "SCL",
+					"signal": "scl"
+				}
+			]
+		},
+		{
+			"id": "spi",
+			"label": "SPI",
+			"kind": "data",
+			"dir": "bidir",
+			"protocol": "spi",
+			"level_v": 3.3,
+			"count": 1,
+			"exclusiveWith": [
+				"i2c",
+				"uart"
+			],
+			"src": "communications.spi",
+			"note": "PS1/PS0 = 11; modo 3, máx. 3 MHz"
+		},
+		{
+			"id": "uart",
+			"label": "UART (RVC ou SHTP)",
+			"kind": "data",
+			"dir": "out",
+			"protocol": "uart",
+			"level_v": 3.3,
+			"count": 1,
+			"exclusiveWith": [
+				"i2c",
+				"spi"
+			],
+			"src": "communications.uart-rvc; communications.uart-shtp",
+			"note": "RVC (PS=01, 115200) é o modo pensado para robôs terrestres e exige cristal externo"
+		},
+		{
+			"id": "int",
+			"label": "H_INTN",
+			"kind": "data",
+			"dir": "out",
+			"protocol": "gpio",
+			"level_v": 3.3,
+			"count": 1,
+			"src": "communications.control-pins[0]",
+			"note": "obrigatório em I²C; o host deve responder em 1/10 do período do sensor mais rápido",
+			"pins": [
+				{
+					"id": "H_INTN",
+					"signal": "gpio"
+				}
+			]
+		},
+		{
+			"id": "nrst",
+			"label": "NRST",
+			"kind": "data",
+			"dir": "in",
+			"protocol": "gpio",
+			"level_v": 3.3,
+			"count": 1,
+			"src": "communications.control-pins[1]",
+			"pins": [
+				{
+					"id": "NRST",
+					"signal": "gpio"
+				}
+			]
+		}
+	],
+	"specs": {
+		"sensors": "9-axis: triaxial 12-bit accelerometer, triaxial 16-bit gyroscope, triaxial geomagnetic sensor, plus 32-bit Cortex-M0+ running CEVA SH-2 sensor fusion",
+		"measurement-range": {
+			"accelerometer": 8,
+			"gyroscope": 2000
+		},
+		"supply-voltage": {
+			"vdd-sensors": {
+				"min": 2.4,
+				"max": 3.6
+			},
+			"vddio-logic": {
+				"min": 1.7,
+				"max": 3.6
+			},
+			"note": "VDD must be powered before or at the same time as VDDIO; Qwiic bus is 3.3 V"
+		},
+		"current": {
+			"idle": 0.057,
+			"fusion-9-axis-100hz": 10.68,
+			"fusion-9-axis-400hz": 14.05,
+			"note": "BNO086 table, VDDIO 3 V + VDD 3.3 V, sum of both rails; idle 0.047 mA (VDDIO) + 0.01 mA (VDD)"
+		},
+		"power-consumption": {
+			"idle": 0.17,
+			"fusion-9-axis-100hz": 34.29,
+			"fusion-9-axis-400hz": 44.4
+		},
+		"accuracy": {
+			"rotation-vector-dynamic": 3.5,
+			"rotation-vector-static": 2,
+			"geomagnetic-rotation-vector-dynamic": 4.5,
+			"gaming-rotation-vector-heading-drift": 0.5,
+			"note": "degrees; heading drift in degrees per minute; datasheet notes that in practice the rotation vector is typically accurate to 5 degrees and the geomagnetic one to 10 degrees"
+		},
+		"max-output-rate": {
+			"gyro-rotation-vector": 1000,
+			"rotation-vector": 400,
+			"gaming-rotation-vector": 400,
+			"geomagnetic-rotation-vector": 90,
+			"linear-acceleration": 400,
+			"gravity": 400,
+			"accelerometer": 500,
+			"gyroscope": 400,
+			"magnetometer": 100,
+			"note": "not all sensors can run at their maximum rate simultaneously"
+		},
+		"latency": {
+			"rotation-vector-at-100hz": 6.6,
+			"rotation-vector-at-200hz": 3.7
+		},
+		"startup-time": 94,
+		"working-temperature": {
+			"min": -40,
+			"max": 85
+		},
+		"communications": {
+			"protocol-selection": "pins PS1/PS0 sampled at reset: 00 = I2C, 01 = UART-RVC, 10 = UART-SHTP, 11 = SPI",
+			"i2c": {
+				"mode": "slave, standard 100 kbit/s and fast 400 kbit/s",
+				"address": [
+					"0x4A",
+					"0x4B"
+				],
+				"address-selection": "SA0 pin sets the lowest address bit",
+				"pull-ups": "2k to 4k ohm on SCL and SDA",
+				"note": "the BNO086 does not support polling over I2C, the host must use the H_INTN interrupt line"
+			},
+			"spi": {
+				"mode": "4-wire slave, SPI mode 3 (CPOL = 1, CPHA = 1), MSB first",
+				"max-clock": 3000000,
+				"note": "PS0 becomes the WAKE signal after reset"
+			},
+			"uart-shtp": {
+				"baud-rate": 3000000,
+				"data-bits": 8,
+				"stop-bits": 1,
+				"parity": "none"
+			},
+			"uart-rvc": {
+				"description": "simplified one-way mode designed for ground roving robots: streams heading and acceleration continuously",
+				"baud-rate": 115200,
+				"data-bits": 8,
+				"stop-bits": 1,
+				"parity": "none",
+				"output-rate": 100,
+				"packet": "19 bytes: header 0xAAAA + index + yaw/pitch/roll (0.01 deg units) + x/y/z acceleration (mg) + motion intent + motion request + reserved + checksum",
+				"note": "requires the external crystal or clock, not the internal oscillator"
+			},
+			"data-protocol": "SHTP (Sensor Hub Transport Protocol) over I2C, SPI and UART-SHTP",
+			"control-pins": [
+				{
+					"name": "H_INTN",
+					"type": "output",
+					"description": "interrupt to host, active low; host should respond within 1/10 of the fastest sensor period"
+				},
+				{
+					"name": "NRST",
+					"type": "input",
+					"description": "active low reset"
+				},
+				{
+					"name": "BOOTN",
+					"type": "input",
+					"description": "low at reset enters bootloader (firmware update); pull high through 10k"
+				},
+				{
+					"name": "PS0/WAKE",
+					"type": "input",
+					"description": "protocol select 0, doubles as wake signal in SPI mode"
+				},
+				{
+					"name": "PS1",
+					"type": "input",
+					"description": "protocol select 1"
+				},
+				{
+					"name": "SA0",
+					"type": "input",
+					"description": "I2C address low bit / SPI data in"
+				}
+			],
+			"board-connector": "Qwiic (JST-SH 4 pin, 3.3 V I2C) plus broken-out header pins"
+		}
+	}
+}

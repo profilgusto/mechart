@@ -1,0 +1,289 @@
+{
+	"schemaVersion": 1,
+	"id": "orange-pi-zero-2w",
+	"description": "Orange Pi Zero 2 W 2GB",
+	"type": "sbc",
+	"category": "compute",
+	"ports": [
+		{
+			"id": "pwr",
+			"label": "USB-C (entrada de energia)",
+			"kind": "power",
+			"dir": "sink",
+			"v": {
+				"nom": 5
+			},
+			"draw_mA": 440,
+			"peak_mA": 2000,
+			"required": true,
+			"count": 1,
+			"exclusiveWith": [
+				"pwr-header"
+			],
+			"src": "input-voltage; average-current.load 440 (idle 240); recommended-supply-current 2000",
+			"note": "a fonte deve poder entregar 2 A mesmo com o consumo médio em 440 mA",
+			"pins": [
+				{
+					"id": "5V (USB-C)",
+					"signal": "pos"
+				},
+				{
+					"id": "GND",
+					"signal": "neg"
+				}
+			]
+		},
+		{
+			"id": "pwr-header",
+			"label": "5V / GND (header GPIO)",
+			"kind": "power",
+			"dir": "sink",
+			"v": {
+				"nom": 5
+			},
+			"draw_mA": 440,
+			"peak_mA": 2000,
+			"required": true,
+			"count": 1,
+			"exclusiveWith": [
+				"pwr"
+			],
+			"src": "communications.gpio-header.layout (Raspberry Pi compatible: 5 V nos pinos 2 e 4, GND nos pinos 6, 9, 14, 20, 25, 30, 34 e 39); input-voltage 5 V",
+			"note": "entrada alternativa ao USB-C, pelos pinos de 5 V do header de 40 pinos (que NÃO vem soldado de fábrica). Use UMA entrada de energia: ligar USB-C e header juntos é bloqueado pela validação",
+			"pins": [
+				{
+					"id": "5V",
+					"signal": "pos"
+				},
+				{
+					"id": "GND",
+					"signal": "neg"
+				}
+			]
+		},
+		{
+			"id": "usb-otg",
+			"label": "USB0 (Type-C, OTG)",
+			"kind": "data",
+			"dir": "bidir",
+			"protocol": "usb",
+			"count": 1,
+			"src": "communications.usb[0]",
+			"note": "Device (OTG) por padrão, pode virar Host via orangepi-config. Existe uma segunda porta de dados, USB1 (ver porta \"usb1\"), fixa em modo Host — corrige o que estava registrado antes (só 1 porta USB de dados)"
+		},
+		{
+			"id": "usb1",
+			"label": "USB1 (Type-C, Host)",
+			"kind": "data",
+			"dir": "bidir",
+			"protocol": "usb",
+			"count": 1,
+			"vbus": "host",
+			"supply_mA": null,
+			"src": "communications.usb[1]",
+			"note": "sempre em modo Host, não precisa configurar nada — melhor porta para periféricos fixos (câmera, ESP32, etc.)"
+		},
+		{
+			"id": "gpio",
+			"label": "Header GPIO 40 pinos",
+			"kind": "data",
+			"dir": "bidir",
+			"protocol": "gpio",
+			"level_v": 3.3,
+			"count": 40,
+			"src": "communications.gpio-header",
+			"note": "compatível com Raspberry Pi, mas NÃO vem soldado de fábrica"
+		},
+		{
+			"id": "uart",
+			"label": "UART (no header)",
+			"kind": "data",
+			"dir": "bidir",
+			"protocol": "uart",
+			"level_v": 3.3,
+			"count": 5,
+			"instances": [
+				"UART0",
+				"UART5",
+				"UART2",
+				"UART3",
+				"UART4"
+			],
+			"src": "communications.gpio-header.uart-instances",
+			"note": "5 instâncias: UART0 e UART5 em pinos dedicados; UART2, UART3 e UART4 dividem pino com I²C (TWI0/TWI2) ou PWM (PWM3/PWM4) — só uma função por vez nesses pinos",
+			"pins": [
+				{
+					"id": "TXD",
+					"signal": "tx"
+				},
+				{
+					"id": "RXD",
+					"signal": "rx"
+				}
+			]
+		},
+		{
+			"id": "i2c",
+			"label": "I²C (no header)",
+			"kind": "data",
+			"dir": "bidir",
+			"protocol": "i2c",
+			"level_v": 3.3,
+			"count": 3,
+			"src": "communications.gpio-header.i2c-instances",
+			"note": "3 barramentos: TWI1 em pinos dedicados; TWI0 e TWI2 dividem pino com UART2 e UART3 respectivamente",
+			"pins": [
+				{
+					"id": "SDA",
+					"signal": "sda"
+				},
+				{
+					"id": "SCL",
+					"signal": "scl"
+				}
+			]
+		},
+		{
+			"id": "spi",
+			"label": "SPI (no header)",
+			"kind": "data",
+			"dir": "bidir",
+			"protocol": "spi",
+			"level_v": 3.3,
+			"count": 2,
+			"src": "communications.gpio-header.spi-instances",
+			"note": "1 barramento SPI1 (MOSI/MISO/CLK dedicados) com 2 chip-selects (CS0, CS1) — até 2 dispositivos escravos no mesmo barramento"
+		},
+		{
+			"id": "pwm",
+			"label": "PWM (no header)",
+			"kind": "data",
+			"dir": "out",
+			"protocol": "pwm",
+			"level_v": 3.3,
+			"count": 4,
+			"src": "communications.gpio-header.pwm-instances",
+			"note": "PWM hardware via pwmchip0 (kernel), desabilitado por padrão. PWM1/PWM2 em pinos dedicados; PWM3/PWM4 dividem pino com UART4. Frequência máxima não publicada (manual só demonstra teste a 50 Hz)",
+			"pins": [
+				{
+					"id": "PWM",
+					"signal": "pwm"
+				}
+			]
+		},
+		{
+			"id": "hdmi",
+			"label": "mini-HDMI 2.0",
+			"kind": "data",
+			"dir": "out",
+			"protocol": "hdmi",
+			"count": 1,
+			"src": "communications.video-output"
+		},
+		{
+			"id": "wifi",
+			"label": "Wi-Fi 5 dual band + BT 5.0",
+			"kind": "data",
+			"dir": "bidir",
+			"protocol": "wireless",
+			"count": 1,
+			"src": "communications.wireless"
+		}
+	],
+	"specs": {
+		"soc": "Allwinner H618",
+		"cpu": {
+			"cores": 4,
+			"architecture": "ARM Cortex-A53",
+			"clock": 1.5
+		},
+		"gpu": "ARM Mali-G31 MP2",
+		"ram": 2,
+		"input-voltage": {
+			"nominal": 5
+		},
+		"average-current": {
+			"idle": 240,
+			"load": 440
+		},
+		"power-consumption": {
+			"idle": 1.2,
+			"load": 2.2
+		},
+		"recommended-supply-current": 2000,
+		"communications": {
+			"wireless": {
+				"chip": "20U5622",
+				"wifi": "IEEE 802.11 a/b/g/n/ac, dual band 2.4 GHz / 5 GHz, onboard antenna",
+				"bluetooth": "Bluetooth 5.0",
+				"src": "user manual v1.1 section 1.4"
+			},
+			"gpio-header": {
+				"pins": 40,
+				"gpio-count": 28,
+				"layout": "Raspberry Pi compatible, unpopulated (header not soldered from factory)",
+				"logic-level": 3.3,
+				"available-interfaces": [
+					"GPIO",
+					"UART",
+					"I2C",
+					"SPI",
+					"PWM"
+				],
+				"uart-instances": {
+					"count": 5,
+					"list": "UART0 (PH0 TX pin 8 / PH1 RX pin 10, dedicated), UART5 (PH2 TX pin 11 / PH3 RX pin 13, dedicated), UART2 (PI5 TX pin 15 / PI6 RX pin 22, shares pins with TWI0), UART3 (PI9 TX pin 28 / PI10 RX pin 27, shares pins with TWI2), UART4 (PI13 TX pin 7 / PI14 RX pin 16, shares pins with PWM3/PWM4)",
+					"note": "UART2, UART3 and UART4 each share their pins with an I2C (TWI) or PWM function — only one of the multiplexed functions can be used at a time on those pins. UART0 and UART5 are dedicated.",
+					"src": "user manual v1.1 section 3.17 (40 pin interface pin description)"
+				},
+				"i2c-instances": {
+					"count": 3,
+					"list": "TWI1 (SDA pin 3 / SCL pin 5, dedicated), TWI0 (SCL/UART2_TX pin 15, SDA/UART2_RX pin 22, shares pins with UART2), TWI2 (SDA/UART3_RX pin 27, SCL/UART3_TX pin 28, shares pins with UART3)",
+					"src": "user manual v1.1 section 3.17"
+				},
+				"spi-instances": {
+					"count": 1,
+					"description": "SPI1: MOSI pin 19 / MISO pin 21 / CLK pin 23 (dedicated), plus two chip-selects CS0 pin 24 and CS1 pin 26, allowing up to 2 slave devices on the same bus",
+					"src": "user manual v1.1 section 3.17"
+				},
+				"pwm-instances": {
+					"count": 4,
+					"type": "hardware PWM via kernel pwmchip0, disabled by default (must be enabled with orangepi-config)",
+					"list": "PWM1 (PI11, pin 32, dedicated), PWM2 (PI12, pin 33, dedicated), PWM3 (PI13, pin 7, shares pins with UART4_TX), PWM4 (PI14, pin 16, shares pins with UART4_RX)",
+					"note": "manual only demonstrates a 50 Hz test output (period set via /sys/class/pwm/pwmchip0/pwmN/period in ns); maximum output frequency is not published",
+					"src": "user manual v1.1 sections 3.19.6 and 3.20"
+				}
+			},
+			"usb": [
+				{
+					"id": "USB0",
+					"connector": "USB 2.0 Type-C",
+					"role": "power input or data; Device mode (OTG) by default, switchable to Host mode via orangepi-config"
+				},
+				{
+					"id": "USB1",
+					"connector": "USB 2.0 Type-C",
+					"role": "power input or data; fixed Host mode"
+				}
+			],
+			"usb-note": "both Type-C connectors can supply power and both can carry USB2.0 data; USB0 defaults to Device mode (e.g. for flashing) and USB1 is always Host — a USB Type-A device needs USB1 directly or USB0 switched to Host mode",
+			"video-output": "mini-HDMI 2.0, up to 4K@60Hz",
+			"expansion-connector": {
+				"pins": 24,
+				"description": "optional expansion board adds 100M ethernet, 2x USB 2.0 type-A, IR receiver, audio out, TV out and power button"
+			},
+			"storage-interfaces": [
+				"microSD card slot",
+				"16 MB SPI flash"
+			]
+		},
+		"thermal-zones": {
+			"count": 4,
+			"list": "cpu, ddr, gpu, ve",
+			"critical-temperature": 110,
+			"note": "SoC junction/critical shutdown temperature per thermal zone, not an ambient operating temperature rating (still unpublished — see componentes_TODO.md)",
+			"src": "user manual v1.1 section 3.16.2 (linux 6.1 `sensors` output, crit = +110.0°C per zone)"
+		},
+		"weight": 12.5
+	}
+}

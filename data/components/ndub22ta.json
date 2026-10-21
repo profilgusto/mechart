@@ -1,0 +1,113 @@
+{
+	"schemaVersion": 1,
+	"id": "ndub22ta",
+	"description": "NDUB22TA 4-switch synchronous buck-boost converter module, adjustable output 3.3V/4.2V/5V/6V/9V/10V/12V (selectable versions)",
+	"type": {
+		"level-0": "dc-dc-converter",
+		"level-1": "buck-boost",
+		"level-2": "synchronous"
+	},
+	"category": "power",
+	"instance": {
+		"selectableOutput": true
+	},
+	"ports": [
+		{
+			"id": "in",
+			"label": "DC 3-23V",
+			"kind": "power",
+			"dir": "sink",
+			"v": {
+				"min": 3,
+				"max": 23
+			},
+			"draw_mA": null,
+			"required": true,
+			"count": 1,
+			"src": "input-voltage; quiescent-current (null no datasheet)",
+			"note": "buck-boost verdadeiro: regula a saída acima ou abaixo da entrada",
+			"pins": [
+				{
+					"id": "IN+",
+					"signal": "pos"
+				},
+				{
+					"id": "IN-",
+					"signal": "neg"
+				}
+			]
+		},
+		{
+			"id": "out",
+			"label": "Output",
+			"kind": "power",
+			"dir": "source",
+			"v": {
+				"min": 3.3,
+				"max": 12
+			},
+			"supply_mA": 3000,
+			"count": 8,
+			"src": "output-voltage; output-current.max 3 A",
+			"note": "tensão fixa, selecionada na compra (3.3V / 4.2V / 5V / 6V / 9V / 10V / 12V); não ajustável após fabricação",
+			"pins": [
+				{
+					"id": "OUT+",
+					"signal": "pos"
+				},
+				{
+					"id": "OUT-",
+					"signal": "neg"
+				}
+			]
+		}
+	],
+	"specs": {
+		"chip": "NDUB22TA, synchronous 4-switch buck-boost topology",
+		"topology": "4-switch buck-boost (true bidirectional: can step up or step down)",
+		"input-voltage": {
+			"min": 3,
+			"max": 23
+		},
+		"output-voltage": {
+			"min": 3.3,
+			"max": 12,
+			"note": "fixed output voltage, selectable at purchase: 3.3V / 4.2V / 5V / 6V / 9V / 10V / 12V versions available; not adjustable after purchase"
+		},
+		"output-current": {
+			"max": 3,
+			"note": "maximum 3A output current or 4A input current, whichever is lower"
+		},
+		"output-power": {
+			"min": 1,
+			"max": 60
+		},
+		"switching-frequency": 500000,
+		"efficiency": {
+			"typical": 88,
+			"max": 93
+		},
+		"quiescent-current": null,
+		"features": [
+			"under-voltage protection (UVP)",
+			"internal soft start (SS)",
+			"over-current protection (OCP)",
+			"over-temperature warning and shutdown",
+			"synchronous 4-switch topology for high efficiency",
+			"true buck-boost: maintains regulated output above or below input voltage"
+		],
+		"working-temperature": null,
+		"dimensions": {
+			"length": 25,
+			"width": 18,
+			"height": 6.5
+		},
+		"weight": 3,
+		"connections": {
+			"DC 3-23V": "input positive and negative (screw terminal or solder pads)",
+			"Output": "output positive and negative (screw terminal or solder pads)"
+		},
+		"note": "select the output voltage variant at purchase (e.g., 12V version for motor driver supply); the module cannot be adjusted after manufacture",
+		"source": "https://pt.aliexpress.com/item/1005005848104656.html"
+	}
+}

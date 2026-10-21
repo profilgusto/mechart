@@ -158,6 +158,10 @@ function PortRow({ port }: { port: Port }) {
     else if (port.dir === 'source') spec.push('capacidade a confirmar')
   } else {
     spec.push(port.protocol ?? 'dados')
+    if (port.vbus === 'device' && port.draw_mA != null) spec.push(`consome ${port.draw_mA} mA do VBUS`)
+    if (port.vbus === 'host') {
+      spec.push(port.supply_mA != null ? `entrega ${port.supply_mA} mA no VBUS` : 'VBUS: capacidade a confirmar')
+    }
     spec.push(port.level_v != null ? `${port.level_v} V` : 'nível a confirmar')
   }
   if (port.count > 1) spec.push(`${port.count} ligações`)
@@ -388,7 +392,7 @@ export default function Inspector({
 
       {component.ports.length === 0 ? (
         <div className="banner">
-          Portas ainda não declaradas para este componente em <code>data/ports.json</code>.
+          Portas ainda não declaradas para este componente em <code>data/components/{component.id}.json</code>.
         </div>
       ) : (
         <>

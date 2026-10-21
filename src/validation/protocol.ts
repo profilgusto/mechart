@@ -1,6 +1,6 @@
 import type { Issue, Library, Port } from '../model/types'
 import type { ArchEdge, ArchNode } from '../model/graph'
-import { resolveEdge, nodeLabel } from '../model/graph'
+import { resolveEdge, portRef } from '../model/graph'
 
 /** Um par de portas de dados so pode ser ligado se falar o mesmo protocolo. */
 export function portsCompatible(a: Port, b: Port): { ok: boolean; reason?: string } {
@@ -45,7 +45,7 @@ export function checkProtocol(
       issues.push({
         level: 'error',
         rule: 'protocol',
-        message: `${nodeLabel(from.node, from.component)}.${from.port.id} → ${nodeLabel(to.node, to.component)}.${to.port.id}: ${verdict.reason}.`,
+        message: `${portRef(from.node, from.component, from.port)} → ${portRef(to.node, to.component, to.port)}: ${verdict.reason}.`,
         nodeIds: [from.node.id, to.node.id],
         edgeIds: [edge.id],
       })
@@ -59,7 +59,7 @@ export function checkProtocol(
         issues.push({
           level: 'warning',
           rule: 'protocol',
-          message: `${nodeLabel(from.node, from.component)}.${from.port.id} → ${nodeLabel(to.node, to.component)}.${to.port.id}: níveis lógicos diferentes (${la} V e ${lb} V) — pode precisar de conversor.`,
+          message: `${portRef(from.node, from.component, from.port)} → ${portRef(to.node, to.component, to.port)}: níveis lógicos diferentes (${la} V e ${lb} V) — pode precisar de conversor.`,
           nodeIds: [from.node.id, to.node.id],
           edgeIds: [edge.id],
         })
@@ -67,7 +67,7 @@ export function checkProtocol(
         issues.push({
           level: 'unverifiable',
           rule: 'protocol',
-          message: `${nodeLabel(from.node, from.component)}.${from.port.id} → ${nodeLabel(to.node, to.component)}.${to.port.id}: nível lógico não confirmado em uma das pontas.`,
+          message: `${portRef(from.node, from.component, from.port)} → ${portRef(to.node, to.component, to.port)}: nível lógico não confirmado em uma das pontas.`,
           nodeIds: [from.node.id, to.node.id],
           edgeIds: [edge.id],
         })

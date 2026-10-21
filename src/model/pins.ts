@@ -65,7 +65,7 @@ export function expandEdge(
     return {
       links: [],
       soltos: [],
-      reason: `pinagem de ${quem} não está declarada em ports.json`,
+      reason: `pinagem de ${quem} não está declarada no arquivo do componente`,
     }
   }
 

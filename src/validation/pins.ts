@@ -1,6 +1,6 @@
 import type { Issue, Library } from '../model/types'
 import type { ArchEdge, ArchNode } from '../model/graph'
-import { resolveEdge, nodeLabel } from '../model/graph'
+import { resolveEdge, portRef } from '../model/graph'
 import { expandEdge } from '../model/pins'
 
 /**
@@ -25,7 +25,7 @@ export function checkPins(lib: Library, nodes: ArchNode[], edges: ArchEdge[]): I
     // Sem pinagem publicada nao ha o que conferir: ja aparece como linha unica.
     if (exp.reason) continue
 
-    const onde = `${nodeLabel(from.node, from.component)}.${from.port.id} → ${nodeLabel(to.node, to.component)}.${to.port.id}`
+    const onde = `${portRef(from.node, from.component, from.port)} → ${portRef(to.node, to.component, to.port)}`
 
     if (exp.links.length === 0) {
       issues.push({

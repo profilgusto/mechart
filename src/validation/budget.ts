@@ -1,6 +1,6 @@
 import type { Issue, Library } from '../model/types'
 import type { ArchEdge, ArchNode } from '../model/graph'
-import { resolveEdge, nodeLabel, effectiveCurrent } from '../model/graph'
+import { resolveEdge, portRef, effectiveCurrent } from '../model/graph'
 
 const mA = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(2)} A` : `${v} mA`)
 
@@ -22,23 +22,28 @@ export function checkBudget(
   for (const edge of edges) {
     const r = resolveEdge(lib, nodes, edge)
     if (!r) continue
-    const { from, to } = r
-    if (from.port.kind !== 'power' || to.port.kind !== 'power') continue
-    const fornece = from.port.dir === 'source' || from.port.dir === 'bidir'
-    const consome = to.port.dir === 'sink' || to.port.dir === 'bidir'
-    if (!fornece || !consome) continue
+    // O cabo USB leva dados e 5 V: o host e a fonte, o device e a carga.
+    const usb = r.from.port.vbus && r.to.port.vbus && r.from.port.vbus !== r.to.port.vbus
+    const [from, to] =
+      usb && r.from.port.vbus === 'device' ? [r.to, r.from] : [r.from, r.to]
+    if (!usb) {
+      if (from.port.kind !== 'power' || to.port.kind !== 'power') continue
+      const fornece = from.port.dir === 'source' || from.port.dir === 'bidir'
+      const consome = to.port.dir === 'sink' || to.port.dir === 'bidir'
+      if (!fornece || !consome) continue
+    }
 
     const k = `${from.node.id}\u0000${from.port.id}`
     if (!bySource.has(k)) {
       bySource.set(k, {
-        label: `${nodeLabel(from.node, from.component)}.${from.port.id}`,
+        label: `${portRef(from.node, from.component, from.port)}`,
         // Ramos em paralelo somam a corrente que a fonte entrega.
         supply: effectiveCurrent(from.node, from.port, 'supply'),
         loads: [],
       })
     }
     bySource.get(k)!.loads.push({
-      label: `${nodeLabel(to.node, to.component)}.${to.port.id}`,
+      label: `${portRef(to.node, to.component, to.port)}`,
       draw: effectiveCurrent(to.node, to.port, 'draw'),
       peak: effectiveCurrent(to.node, to.port, 'peak'),
       edgeId: edge.id,

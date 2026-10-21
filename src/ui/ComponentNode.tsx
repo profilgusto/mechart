@@ -1,14 +1,18 @@
+import { useState } from 'react'
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react'
-import type { Component, Pin, Port } from '../model/types'
+import type { Component, Issue, Pin, Port } from '../model/types'
 import { CATEGORY_COLOR, formatRangeCompact, rangeBounds } from '../data/normalize'
-import { handleId, rolesOf, roleOf, missingRequired, effectiveVoltage, type ArchNode } from '../model/graph'
+import { nodeLabel, handleId, rolesOf, roleOf, missingRequired, effectiveVoltage, type ArchNode } from '../model/graph'
 import { pinsOf, type UartInstance } from '../model/pins'
+import NodeIssueBadge from './NodeIssueBadge'
 import { getTypeHierarchy } from '../model/component-type'
 
 export type ComponentNodeData = {
   component: Component
   label: string
   level: 'error' | 'warning' | 'unverifiable' | null
+  /** Problemas de validação que envolvem este bloco. */
+  issues: Issue[]
   /** "3S2P · 6 células", quando o bloco representa um pack. */
   arrangement: string | null
   /** Ids das portas que ja tem alguma ligacao. */
@@ -29,6 +33,7 @@ export type ComponentNodeData = {
   onStartConnect: (nodeId: string) => void
   onCancelConnect: () => void
   onStartDisconnect: (nodeId: string) => void
+  onRename: (nodeId: string, label: string) => void
 }
 
 export type ComponentFlowNode = Node<ComponentNodeData, 'component'>
@@ -229,6 +234,7 @@ export default function ComponentNode({ id, data, selected }: NodeProps<Componen
   const {
     component,
     level,
+    issues,
     arrangement,
     connected,
     incoming,
@@ -241,6 +247,47 @@ export default function ComponentNode({ id, data, selected }: NodeProps<Componen
     node,
   } = data
   const color = CATEGORY_COLOR[component.category]
+  const name = nodeLabel(node, component)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+  const startEdit = () => {
+    setDraft(name)
+    setEditing(true)
+  }
+  const save = () => {
+    const v = draft.trim()
+    if (v) data.onRename(id, v)
+    setEditing(false)
+  }
+  // Mesmo lugar onde o nome aparece: título (id) ou linha de baixo (tipo).
+  const nameField = (cls: string) =>
+    editing ? (
+      <div className="node__rename nodrag nowheel">
+        <input
+          className="node__rename-input"
+          value={draft}
+          autoFocus
+          onFocus={(e) => e.currentTarget.select()}
+          onChange={(e) => setDraft(e.target.value)}
+          onPointerDown={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            e.stopPropagation()
+            if (e.key === 'Enter') save()
+            if (e.key === 'Escape') setEditing(false)
+          }}
+        />
+        <div className="node__rename-actions">
+          <button type="button" onClick={save} disabled={!draft.trim()}>
+            salvar
+          </button>
+          <button type="button" onClick={() => setEditing(false)}>
+            cancelar
+          </button>
+        </div>
+      </div>
+    ) : (
+      <span className={cls}>{name}</span>
+    )
   const ligadas = new Set(connected)
   const faltando = new Set(missingRequired(component, ligadas).flat().map((p) => p.id))
 
@@ -267,6 +314,7 @@ export default function ComponentNode({ id, data, selected }: NodeProps<Componen
 
   return (
     <div className={classes} style={{ ['--cat' as string]: color }}>
+      {level && issues.length > 0 ? <NodeIssueBadge level={level} issues={issues} /> : null}
       {single && !connecting ? (
         <div className="node__actions nodrag">
           <button
@@ -311,6 +359,21 @@ export default function ComponentNode({ id, data, selected }: NodeProps<Componen
       ) : null}
 
       <div className="node__head">
+        {!editing ? (
+          <button
+            type="button"
+            className="node__pencil nodrag"
+            data-tip="Alterar nome do componente"
+            aria-label="Renomear componente"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation()
+              startEdit()
+            }}
+          >
+            ✎
+          </button>
+        ) : null}
         {(() => {
           const hierarchy = getTypeHierarchy(component.type)
           const mainType = hierarchy[0] // level-0
@@ -321,7 +384,7 @@ export default function ComponentNode({ id, data, selected }: NodeProps<Componen
             <>
               {idAsTitle ? (
                 <>
-                  <div className="node__title">{component.id}</div>
+                  <div className="node__title">{nameField("")}</div>
                   {allTypes && <div className="node__subtype">{allTypes}</div>}
                   {component.external ? (
                     <div className="node__external" title="alimentação prevista fora do projeto — não é uma peça do sistema">
@@ -340,7 +403,7 @@ export default function ComponentNode({ id, data, selected }: NodeProps<Componen
                     </div>
                   ) : null}
                   <div className="node__meta">
-                    <span className="node__id">{component.id}</span>
+                    {nameField("node__id")}
                     {arrangement ? ` · ${arrangement}` : null}
                   </div>
                 </>

@@ -1,0 +1,219 @@
+{
+	"schemaVersion": 1,
+	"id": "esp32-s3-wroom-1-n16r8",
+	"description": "ESP32-S3 development board with ESP32-S3-WROOM-1 N16R8 module, 44 pin, two USB Type-C connectors and RGB LED",
+	"type": "microcontroller",
+	"category": "compute",
+	"ports": [
+		{
+			"id": "3v3",
+			"label": "3V3 / GND",
+			"kind": "power",
+			"dir": "sink",
+			"v": {
+				"min": 3,
+				"nom": 3.3,
+				"max": 3.6
+			},
+			"draw_mA": null,
+			"required": true,
+			"count": 1,
+			"src": "input-voltage",
+			"note": "alimentação do módulo; o consumo da placa não está registrado no components.json — a confirmar",
+			"pins": [
+				{
+					"id": "3V3",
+					"signal": "pos"
+				},
+				{
+					"id": "GND",
+					"signal": "neg"
+				}
+			]
+		},
+		{
+			"id": "usb-c",
+			"label": "USB-C (×2: OTG e Serial/JTAG)",
+			"kind": "data",
+			"dir": "bidir",
+			"protocol": "usb",
+			"count": 2,
+			"src": "communications.usb",
+			"note": "a placa aceita 5 V pelos conectores USB-C e regula internamente"
+		},
+		{
+			"id": "gpio",
+			"label": "GPIO",
+			"kind": "data",
+			"dir": "bidir",
+			"protocol": "gpio",
+			"level_v": 3.3,
+			"count": 33,
+			"src": "communications.gpio.count 36, menos IO35/IO36/IO37 usados pela PSRAM octal",
+			"note": "4 GPIOs de strapping entre os 33"
+		},
+		{
+			"id": "uart",
+			"label": "UART",
+			"kind": "data",
+			"dir": "bidir",
+			"protocol": "uart",
+			"level_v": 3.3,
+			"count": 1,
+			"src": "communications.interfaces",
+			"note": "multiplexado nos GPIO; o número de instâncias não está registrado no components.json",
+			"pins": [
+				{
+					"id": "TX",
+					"signal": "tx"
+				},
+				{
+					"id": "RX",
+					"signal": "rx"
+				}
+			]
+		},
+		{
+			"id": "i2c",
+			"label": "I²C",
+			"kind": "data",
+			"dir": "bidir",
+			"protocol": "i2c",
+			"level_v": 3.3,
+			"count": 112,
+			"src": "communications.interfaces",
+			"note": "multiplexado nos GPIO; barramento compartilhado, não ponto-a-ponto — count reflete o limite de endereçamento 7-bit do I²C (128 endereços, 16 reservados), fonte: I2C-bus specification (NXP UM10204), não a quantidade de fios",
+			"pins": [
+				{
+					"id": "SDA",
+					"signal": "sda"
+				},
+				{
+					"id": "SCL",
+					"signal": "scl"
+				}
+			]
+		},
+		{
+			"id": "spi",
+			"label": "SPI",
+			"kind": "data",
+			"dir": "bidir",
+			"protocol": "spi",
+			"level_v": 3.3,
+			"count": 1,
+			"src": "communications.interfaces",
+			"note": "multiplexado nos GPIO"
+		},
+		{
+			"id": "can",
+			"label": "TWAI (CAN)",
+			"kind": "data",
+			"dir": "bidir",
+			"protocol": "can",
+			"level_v": 3.3,
+			"count": 1,
+			"src": "communications.interfaces",
+			"note": "compatível ISO 11898-1; exige transceptor externo"
+		},
+		{
+			"id": "pwm",
+			"label": "MCPWM / LED PWM",
+			"kind": "data",
+			"dir": "out",
+			"protocol": "pwm",
+			"level_v": 3.3,
+			"count": 6,
+			"src": "communications.interfaces (MCPWM, LED PWM)",
+			"note": "o número exato de canais não está registrado no components.json; 6 é o mínimo prático de um MCPWM. MCPWM + contador de pulsos fazem desta placa a candidata natural ao controle dos motores",
+			"pins": [
+				{
+					"id": "PWM",
+					"signal": "pwm"
+				}
+			]
+		},
+		{
+			"id": "adc",
+			"label": "ADC (SAR)",
+			"kind": "data",
+			"dir": "in",
+			"protocol": "analog",
+			"level_v": 3.3,
+			"count": 1,
+			"src": "communications.analog",
+			"note": "número de canais não registrado no components.json",
+			"pins": [
+				{
+					"id": "ADC",
+					"signal": "analog"
+				}
+			]
+		},
+		{
+			"id": "wifi",
+			"label": "Wi-Fi 2,4 GHz + BLE 5",
+			"kind": "data",
+			"dir": "bidir",
+			"protocol": "wireless",
+			"count": 1,
+			"src": "wireless"
+		}
+	],
+	"specs": {
+		"soc": "ESP32-S3, Xtensa dual-core 32-bit LX7 with single precision FPU",
+		"clock": 240,
+		"memory": {
+			"rom": 384,
+			"sram": 512,
+			"rtc-sram": 16,
+			"flash": 16,
+			"psram": 8,
+			"note": "ROM/SRAM in KB, flash and PSRAM in MB; N16R8 means 16 MB quad SPI flash plus 8 MB octal SPI PSRAM"
+		},
+		"wireless": {
+			"wifi": "802.11 b/g/n, 2.4 GHz (2412-2484 MHz), up to 150 Mbps, on-board PCB antenna",
+			"bluetooth": "Bluetooth LE 5 and Bluetooth mesh, 125 kbps to 2 Mbps"
+		},
+		"input-voltage": {
+			"min": 3,
+			"nominal": 3.3,
+			"max": 3.6,
+			"note": "module supply; the development board also accepts 5 V through the USB Type-C connectors and regulates it on board"
+		},
+		"working-temperature": {
+			"min": -40,
+			"max": 65,
+			"note": "R8 modules (octal PSRAM) are rated -40 to 65 C; enabling PSRAM ECC raises it to 85 C at the cost of 1/16 of the PSRAM size"
+		},
+		"communications": {
+			"gpio": {
+				"count": 36,
+				"note": "on modules with octal PSRAM such as this one, IO35, IO36 and IO37 are used by the PSRAM and are NOT available for other uses; 4 strapping GPIOs"
+			},
+			"interfaces": [
+				"SPI",
+				"I2C",
+				"I2S",
+				"UART",
+				"TWAI (CAN, ISO 11898-1 compatible)",
+				"SD/MMC host",
+				"LCD interface",
+				"camera interface",
+				"USB 2.0 OTG full speed",
+				"USB Serial/JTAG",
+				"MCPWM (motor control PWM)",
+				"RMT remote control",
+				"pulse counter",
+				"LED PWM"
+			],
+			"analog": [
+				"SAR ADC",
+				"touch sensor",
+				"internal temperature sensor"
+			],
+			"usb": "two USB Type-C connectors on the board: native USB OTG and USB Serial/JTAG (COM)",
+			"note": "the MCPWM and pulse counter peripherals make this board a natural candidate for motor control and encoder reading"
+		}
+	}
+}

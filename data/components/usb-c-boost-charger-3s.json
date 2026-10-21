@@ -1,0 +1,83 @@
+{
+	"schemaVersion": 1,
+	"id": "usb-c-boost-charger-3s",
+	"description": "Type-C step-up (boost) lithium battery charging module, 2S/3S/4S selectable; the unit in hand is the 3S 4A version",
+	"type": "battery-charger",
+	"category": "power",
+	"ports": [
+		{
+			"id": "usb-c",
+			"label": "USB-C (entrada)",
+			"kind": "power",
+			"dir": "sink",
+			"v": {
+				"min": 3,
+				"nom": 5,
+				"max": 6
+			},
+			"draw_mA": 4000,
+			"required": true,
+			"count": 1,
+			"src": "input.voltage; input.current 4 A",
+			"note": "faixa recomendada 3,7–5 V"
+		},
+		{
+			"id": "bat",
+			"label": "BAT / GND",
+			"kind": "power",
+			"dir": "source",
+			"v": {
+				"nom": 12.6
+			},
+			"supply_mA": 1480,
+			"count": 1,
+			"src": "output.charging-voltage; output.charging-current",
+			"note": "valores da versão 3S 4A; só carrega — não balanceia as células nem protege o pack em uso",
+			"pins": [
+				{
+					"id": "BAT",
+					"signal": "pos"
+				},
+				{
+					"id": "GND",
+					"signal": "neg"
+				}
+			]
+		}
+	],
+	"specs": {
+		"function": "charges a series lithium pack from a 5 V USB-C source by boosting the voltage; it is a charger only, it does not balance cells and does not protect the pack in use",
+		"input": {
+			"connector": "USB Type-C",
+			"voltage": {
+				"min": 3,
+				"max": 6,
+				"recommended-min": 3.7,
+				"recommended-max": 5
+			},
+			"current": 4
+		},
+		"output": {
+			"charging-voltage": 12.6,
+			"charging-current": 1.48,
+			"note": "values for the 3S 4A version; the same board family does 8.4 V (2S) and 16.8 V (4S), and 1 A / 2 A versions give proportionally lower charging current"
+		},
+		"configuration": "solder jumpers on the back select the series count (2S / 3S / 4S) and the input current (1A / 2A / 4A)",
+		"switching-frequency": 1000000,
+		"features": [
+			"quasi-CV mode, compensates the voltage drop of the cell internal resistance and wiring",
+			"automatic recharge when the pack falls below the threshold",
+			"battery short-circuit protection",
+			"battery overvoltage protection"
+		],
+		"indicators": {
+			"CR": "charging in progress",
+			"OK": "fully charged or constant-voltage mode"
+		},
+		"connections": {
+			"BAT": "pack positive",
+			"GND": "pack negative",
+			"VIN / GND (input side)": "optional DC input in place of the USB-C connector"
+		}
+	}
+}

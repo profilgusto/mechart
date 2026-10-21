@@ -1,4 +1,4 @@
-/** Um valor numerico da library.json, depois de normalizado. */
+/** Um valor numerico da ficha (specs) de um componente, depois de normalizado. */
 export type Range = {
   min?: number
   nom?: number
@@ -35,12 +35,17 @@ export type Port = {
   dir: PortDir
   /** Portas de energia: faixa de tensao aceita (sink) ou entregue (source). */
   v?: Range | null
-  /** Portas de energia sink: consumo tipico em mA. */
+  /** Portas de energia sink (ou USB device, ver `vbus`): consumo tipico em mA. */
   draw_mA?: number | null
   /** Portas de energia sink: pico ou corrente minima exigida da fonte, em mA. */
   peak_mA?: number | null
-  /** Portas de energia source: corrente maxima entregue em mA. */
+  /** Portas de energia source (ou USB host, ver `vbus`): corrente maxima entregue em mA. */
   supply_mA?: number | null
+  /**
+   * Portas USB: o cabo tambem carrega o 5 V. `host` fornece VBUS (`supply_mA`),
+   * `device` consome dele (`draw_mA`); entra no orcamento como uma saida de energia.
+   */
+  vbus?: 'host' | 'device'
   /** Portas de dados: protocolo (uart, i2c, spi, usb, ethernet, can, pwm, gpio, analog...). */
   protocol?: string
   /** Portas de dados: nivel logico em volts. */
@@ -55,7 +60,7 @@ export type Port = {
   /** Ids de portas do mesmo componente que nao podem ser usadas junto com esta. */
   exclusiveWith?: string[]
   /**
-   * Ids de componentes que esta porta espera do outro lado. Ligar qualquer
+   * Ids ou tipos de componentes que esta porta espera do outro lado. Ligar qualquer
    * outra coisa gera aviso -- serve para portas que so fazem sentido num ponto
    * especifico da topologia, como o lado da bateria de um BMS.
    */
@@ -75,14 +80,14 @@ export type Port = {
    * um barramento (I²C/SPI), onde várias ligações dividem os mesmos fios.
    */
   instances?: string[]
-  /** Caminho na library.json de onde o dado veio (rastreabilidade). */
+  /** Caminho nos specs do componente de onde o dado veio (rastreabilidade). */
   src?: string
   note?: string
 }
 
 /**
  * Numeros de UMA unidade, usados para somar um pack. Ficam aqui, e nao no
- * codigo, para que a escolha de qual campo da library.json usar continue
+ * codigo, para que a escolha de qual campo dos specs usar continue
  * documentada e rastreavel.
  */
 export type PackUnit = {
@@ -104,32 +109,16 @@ export type InstanceSpec = {
   selectableOutput?: boolean
 }
 
-export type PortSpec = {
-  category?: Category
-  instance?: InstanceSpec
-  /**
-   * Fronteira do projeto: uma fonte que nao e peca do sistema, mas alimenta o
-   * quadro de fora (o USB-C do charger ligado numa fonte de bancada). Nao vem
-   * da library.json -- e declarada direto no ports.json e nunca entra no BOM.
-   */
-  external?: boolean
-  /** Descricao do pseudo-componente externo (so quando `external`). */
-  description?: string
-  /** Tipo exibido no bloco externo (so quando `external`). */
-  type?: ComponentType
-  ports: Port[]
-}
-
 import type { ComponentType } from './component-type'
 
-/** Um componente cru da library.json, mais o que a ferramenta deriva. */
+/** Um componente do catalogo (data/components/<id>.json), mais o que a ferramenta deriva. */
 export type Component = {
   id: string
   description: string
   category: Category
   /** Tipo hierárquico do componente (string simples ou objeto com níveis) */
   type: ComponentType
-  /** O objeto original, intocado. */
+  /** A ficha do arquivo do componente: type e description no topo, depois os specs. */
   raw: Record<string, unknown>
   ports: Port[]
   instance: InstanceSpec
@@ -141,7 +130,7 @@ export type Library = {
   components: Component[]
   byId: Record<string, Component>
   units: Record<string, string>
-  /** Ids presentes na library.json que ainda nao tem portas declaradas. */
+  /** Ids do catalogo que ainda nao tem portas declaradas. */
   missingPorts: string[]
 }
 

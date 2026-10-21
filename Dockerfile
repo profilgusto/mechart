@@ -13,7 +13,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 # O restante do codigo. `.git`, node_modules e dist ficam de fora pelo
-# .dockerignore. `data/` entra porque o catalogo e as portas sao embutidos no
+# .dockerignore. `data/` entra porque o catalogo (data/components/) e embutido no
 # bundle via `?raw` (ver src/data/load.ts).
 COPY . .
 RUN npm run build

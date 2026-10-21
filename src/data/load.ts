@@ -1,14 +1,19 @@
-import type { Component, Library, PortSpec } from '../model/types'
-import type { ComponentType } from '../model/component-type'
-import { parseLibraryFile } from './parse'
+import type { Component, Library } from '../model/types'
+import { parseComponentFile, toComponent } from './catalog'
 import { categoryOf } from './normalize'
 import { readStoredProject, type ProjectFile } from './project'
 
-// O catalogo e as portas sao embutidos no bundle em tempo de build (`?raw`).
-// O site e 100% estatico: nao existe servidor nem endpoint /api, entao os dados
-// do projeto viajam dentro do proprio JavaScript gerado por `npm run build`.
-import libraryRaw from '../../data/library.json?raw'
-import portsRaw from '../../data/ports.json?raw'
+// O catalogo e embutido no bundle em tempo de build (`?raw`): um arquivo por
+// componente em data/components/. O site e 100% estatico -- nao existe servidor
+// nem endpoint /api, entao os dados viajam dentro do JavaScript gerado por
+// `npm run build`.
+import unitsRaw from '../../data/units.json?raw'
+
+const componentFiles = import.meta.glob('../../data/components/*.json', {
+  eager: true,
+  query: '?raw',
+  import: 'default',
+}) as Record<string, string>
 
 export type LoadResult = {
   library: Library
@@ -16,47 +21,20 @@ export type LoadResult = {
 }
 
 export async function loadProject(): Promise<LoadResult> {
-  const { components: rawComponents, units } = parseLibraryFile(libraryRaw)
+  const units = JSON.parse(unitsRaw) as Record<string, string>
 
-  const portSpecs = JSON.parse(portsRaw) as Record<string, PortSpec>
-
-  const components: Component[] = Object.entries(rawComponents).map(([id, raw]) => {
-    const spec = portSpecs[id]
-
-    // Extrai o tipo hierárquico (string ou objeto)
-    const type: ComponentType = raw.type as ComponentType || 'unknown'
-
-    return {
-      id,
-      description: typeof raw.description === 'string' ? raw.description : id,
-      category: spec?.category ?? categoryOf(id),
-      type,
-      raw,
-      ports: spec?.ports ?? [],
-      instance: spec?.instance ?? {},
-      external: false,
-    }
-  })
-
-  // Fontes externas: nao existem na library.json porque nao sao pecas do
-  // projeto. Sao fronteiras do sistema, declaradas so no ports.json -- e por
-  // isso ficam marcadas como `external` e fora do BOM.
-  for (const [id, spec] of Object.entries(portSpecs)) {
-    if (!spec.external || rawComponents[id]) continue
-    const description =
-      spec.description ?? 'Alimentação fornecida de fora do projeto — não é uma peça do sistema.'
-    const type = spec.type ?? 'Fonte externa'
-    components.push({
-      id,
-      description,
-      category: spec.category ?? 'external',
-      type,
-      raw: { description, type },
-      ports: spec.ports,
-      instance: spec.instance ?? {},
-      external: true,
+  // Fontes externas (`external: true`) tambem sao arquivos do catalogo: sao
+  // fronteiras do sistema, nao pecas, e por isso ficam fora do BOM.
+  const components: Component[] = Object.entries(componentFiles)
+    .map(([path, text]) => {
+      const name = path.slice(path.lastIndexOf('/') + 1)
+      const file = parseComponentFile(text, name)
+      if (name !== `${file.id}.json`) {
+        throw new Error(`${name}: o nome do arquivo deve ser "${file.id}.json"`)
+      }
+      return toComponent(file, categoryOf)
     })
-  }
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
 
   const byId: Record<string, Component> = {}
   for (const c of components) byId[c.id] = c

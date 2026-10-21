@@ -8,6 +8,8 @@ export type ProjectFile = {
   name: string
   nodes: ArchNode[]
   edges: ArchEdge[]
+  /** Mensagens do painel de analise que o usuario optou por ignorar. */
+  ignoredIssues?: string[]
 }
 
 export type ParseResult =
@@ -98,7 +100,13 @@ export function parseProject(text: string): ParseResult {
 
   const name = typeof o.name === 'string' && o.name.trim() ? o.name.trim() : DEFAULT_PROJECT_NAME
 
-  return { ok: true, project: { name, nodes, edges } }
+  const project: ProjectFile = { name, nodes, edges }
+  if (Array.isArray(o.ignoredIssues)) {
+    const ignored = o.ignoredIssues.filter((k): k is string => typeof k === 'string')
+    if (ignored.length > 0) project.ignoredIssues = ignored
+  }
+
+  return { ok: true, project }
 }
 
 export function serializeProject(project: ProjectFile): string {

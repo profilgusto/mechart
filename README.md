@@ -5,7 +5,7 @@ vira caixinhas, você monta o diagrama de blocos ligando as portas, e as ligaç�
 são verificadas contra as restrições reais de alimentação e comunicação de cada peça.
 
 O projeto nasceu para o robô karu-un, mas a aplicação é **auto-contida e genérica**:
-o catálogo (`data/library.json`) e as portas (`data/ports.json`) são apenas dados.
+o catálogo (`data/components/`, um arquivo por componente) é apenas dado.
 O mechart abre por padrão num **projeto novo em branco**; o exemplo do karu-un
 segue versionado em `data/diagram.json` como referência.
 
@@ -19,6 +19,7 @@ A aplicação é auto-contida — rode os comandos **a partir desta pasta**.
 npm install
 npm run dev              # Vite em http://localhost:5180, com hot reload
 npm run typecheck        # tsc --noEmit
+npm run check:data       # confere os arquivos de data/components/
 npm run build            # gera o site estático em dist/
 npm run preview          # serve o dist/ localmente para conferir
 ```
@@ -37,9 +38,16 @@ com rootfs somente leitura, `no-new-privileges` e headers de segurança (CSP,
 HSTS, `X-Frame-Options`, etc.) já configurados em `nginx.conf`:
 
 ```sh
-docker compose up -d     # http://localhost:5180
-docker compose down      # para
-docker compose build     # reconstrói depois de mexer no código
+docker compose -f docker-compose.prod.yml up -d --build   # http://localhost:5180
+docker compose -f docker-compose.prod.yml down            # para
+```
+
+Para desenvolver, o `docker-compose.yml` padrão sobe o Vite com **hot reload**
+(código montado do host, em `Dockerfile.dev`):
+
+```sh
+docker compose up -d --build   # http://localhost:5180
+docker compose down            # para
 ```
 
 > **Para publicar na internet**, ponha um TLS na frente (Caddy/Let's Encrypt ou
@@ -52,14 +60,14 @@ Não rode o Docker e o `npm run dev` ao mesmo tempo: ambos usam a porta 5180.
 
 Os dados vivem dentro da aplicação, em `data/`, e são versionados junto com o
 código. No build eles são **embutidos no bundle** via `?raw` (ver
-`src/data/load.ts`): o catálogo, as portas e o glossário de unidades viram parte
-do JavaScript gerado, sem nenhuma requisição de rede. O `library.json` é lido pelo
-app mas nunca escrito por ele — nem um bug consegue alterá-lo.
+`src/data/load.ts`): o catálogo e o glossário de unidades viram parte do
+JavaScript gerado, sem nenhuma requisição de rede. O catálogo é lido pelo app mas
+nunca escrito por ele — nem um bug consegue alterá-lo.
 
 | Arquivo | Papel |
 |---|---|
-| `data/library.json` | Catálogo de componentes. Embutido no build. **Lido, nunca escrito** pelo app. |
-| `data/ports.json` | Portas de cada componente (energia e dados), escritas à mão. Embutido no build. |
+| `data/components/<id>.json` | Um componente: ficha do datasheet (`specs`) e portas (`ports`) juntas. Embutido no build. **Lido, nunca escrito** pelo app. |
+| `data/units.json` | Glossário de unidades da ficha técnica. Embutido no build. |
 | `data/diagram.json` | Exemplo curado do karu-un (referência). Não é carregado automaticamente. |
 
 O projeto **aberto no editor não vai para o servidor** — não existe servidor. Ele
@@ -76,21 +84,46 @@ o campo, vale "Novo Projeto". **Baixar projeto** grava o arquivo como
 `mechart_<slug>_<YYYY-MM-DD_HH-MM>.json` — o nome em caixa-baixa, sem acento nem
 caractere especial, espaços virando `-`, seguido do instante do download.
 
-O `library.json` não é JSON válido — tem comentários `//` e dois objetos de topo
-concatenados (componentes e, depois de `// units`, o glossário de unidades).
-`src/data/parse.ts` lida com isso; o arquivo continua no formato que você escreveu.
+## Componentes (`data/components/`)
 
-## ports.json
+Cada componente é **um JSON puro**, com o mesmo nome do `id` (`ncr18650b.json`):
 
-Cada porta carrega um campo `src` apontando para o caminho no `library.json`
-de onde o valor saiu. Quando o dado não é publicado, a porta recebe `null` e um
+```json
+{
+  "schemaVersion": 1,
+  "id": "ldrobot-d500",
+  "description": "LDROBOT D500 Development Kit",
+  "type": { "level-0": "sensor", "level-1": "lidar" },
+  "category": "sensor",
+  "instance": {},
+  "ports": [ ... ],
+  "specs": { ... }
+}
+```
+
+- `specs` é a ficha do datasheet como foi transcrita (o Inspector a desenha como
+  árvore, com as unidades de `data/units.json`).
+- `ports` são as portas interpretadas, escritas à mão a partir dos `specs`. É o
+  que a validação lê.
+- `instance` (opcional) declara os ajustes de instância, descritos abaixo.
+- Fonte externa (`"external": true`) não é peça do sistema: não tem `specs` e
+  nunca entra no BOM.
+
+**Para adicionar uma peça**, crie `data/components/<id>.json` e rode
+`npm run check:data`, que confere o formato, ids de porta repetidos,
+`exclusiveWith`/`only` que apontam para o nada e portas sem `src`.
+
+### Portas
+
+Cada porta carrega um campo `src` apontando para o caminho em `specs` de onde o
+valor saiu. Quando o dado não é publicado, a porta recebe `null` e um
 `note` explicando o que falta — o app mostra **"a confirmar"** e a validação
 responde **"não verificável"**, nunca "ok". É a regra do projeto ("só entram
 valores confirmados") levada até o diagrama.
 
 Ajustes são declarados em `instance`:
 
-- `pack` — o bloco representa unidades arranjáveis. O `library.json` descreve
+- `pack` — o bloco representa unidades arranjáveis. Os `specs` descrevem
   **uma** célula 18650; o pack real se descreve com *Em série (S)* e *Em paralelo
   (P)*. Um 3S2P é `series: 3, parallel: 2` — seis células.
 
@@ -100,7 +133,7 @@ Ajustes são declarados em `instance`:
 
   Os números de uma unidade ficam em `instance.unit`, com o campo de origem
   anotado — a capacidade usa `capacity.nominal-at-25c-typical`, porque é o que a
-  nota do `library.json` manda adotar como figura de projeto.
+  nota dos `specs` manda adotar como figura de projeto.
 - `adjustable` — a saída é regulada na montagem (o trimmer do MP1584EN). Declare a
   tensão em *Saída ajustada* para que as cargas sejam verificadas contra ela.
 - `selectableOutput` — a saída é fixa, escolhida na compra entre variantes (o
@@ -149,7 +182,7 @@ pack 3S2P ──▶ bms                 B1  ──tap1──▶  B1
                                   +   ──pos ──▶  B+
 ```
 
-Os pinos vêm de `pins` em `ports.json`, e cada um carrega um `signal` — o nome
+Os pinos vêm de `pins` nas `ports` do componente, e cada um carrega um `signal` — o nome
 lógico que casa as duas pontas. Iguais se ligam (`pos`↔`pos`, `sda`↔`sda`) e
 `tx` cruza com `rx`, como tem de ser.
 
@@ -179,7 +212,7 @@ confirmar no datasheet.
 A legenda no rodapé traz os dois grupos — *portas* (os papéis) e *ligações* (os
 protocolos das linhas).
 
-Quais portas são obrigatórias está declarado em `ports.json` (`"required": true`):
+Quais portas são obrigatórias está declarado nas `ports` (`"required": true`):
 a alimentação principal de cada peça, mais o `STBY` do TB6612FNG, que precisa
 estar alto para as saídas saírem da alta impedância.
 

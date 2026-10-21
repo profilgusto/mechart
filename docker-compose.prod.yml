@@ -1,0 +1,35 @@
+# Editor de arquitetura de sistemas mecatrônicos (mechart).
+#
+#   docker compose -f docker-compose.prod.yml up -d --build   sobe em http://localhost:5180
+#   docker compose -f docker-compose.prod.yml down            para
+#
+# Em producao roda o site ESTATICO gerado por `npm run build`, servido por nginx
+# com headers de seguranca. Nao ha servidor de aplicacao, nao ha endpoint de
+# escrita e nada e montado do host: a imagem ja contem tudo. Para desenvolver,
+# use o docker-compose.yml (Vite com hot reload).
+
+services:
+  mechart:
+    build:
+      context: .
+    image: mechart:latest
+    container_name: mechart
+    ports:
+      - "5180:8080"
+    # Rootfs somente leitura; os poucos diretorios que o nginx escreve vao para
+    # tmpfs. Roda non-root (usuario da imagem) e sem ganho de privilegios.
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      # 127.0.0.1 explicito: o nginx escuta so em IPv4, e `localhost` no busybox
+      # wget resolve para ::1 e nao cai de volta para o IPv4.
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped

@@ -1,6 +1,6 @@
-import type { Issue, Library } from '../model/types'
+import type { Issue, Library, Port } from '../model/types'
 import type { ArchEdge, ArchNode } from '../model/graph'
-import { nodeLabel } from '../model/graph'
+import { nodeLabel, portName } from '../model/graph'
 
 /** Respeita o numero de ligacoes que cada porta aceita, e a exclusividade mutua. */
 export function checkPortCount(
@@ -35,7 +35,7 @@ export function checkPortCount(
         issues.push({
           level: 'error',
           rule: 'port-count',
-          message: `${label}.${port.id}: ${edgeIds.length} ligações numa porta que aceita ${port.count}.`,
+          message: `${label} (${portName(port)}): ${edgeIds.length} ligações numa porta que aceita ${port.count}.`,
           nodeIds: [node.id],
           edgeIds,
         })
@@ -51,7 +51,7 @@ export function checkPortCount(
             issues.push({
               level: 'error',
               rule: 'port-count',
-              message: `${label}: ${port.id} e ${other} são mutuamente exclusivos — o componente usa um ou o outro, não os dois.`,
+              message: `${label}: ${portName(port)} e ${portName(component.ports.find((p) => p.id === other) ?? { id: other } as Port)} são mutuamente exclusivos — o componente usa um ou o outro, não os dois.`,
               nodeIds: [node.id],
               edgeIds: [...edgeIds, ...(used.get(key(node.id, other)) ?? [])],
             })

@@ -1,0 +1,130 @@
+{
+	"schemaVersion": 1,
+	"id": "jga25-371",
+	"description": "Bringsmart JGA25-371 DC gear motor with hall encoder, 12V / 170rpm version",
+	"type": {
+		"level-0": "motor",
+		"level-1": "brushed-dc",
+		"level-2": "geared"
+	},
+	"category": "actuation",
+	"ports": [
+		{
+			"id": "pwr",
+			"label": "vermelho / branco",
+			"kind": "power",
+			"dir": "sink",
+			"v": {
+				"min": 6,
+				"nom": 12,
+				"max": 24
+			},
+			"draw_mA": null,
+			"required": true,
+			"count": 1,
+			"src": "input-voltage; wiring.pinout[0..1]",
+			"note": "a corrente do motor (nominal e de rotor bloqueado) NÃO está no components.json — a confirmar antes de dimensionar a ponte H",
+			"pins": [
+				{
+					"id": "vermelho",
+					"signal": "pos"
+				},
+				{
+					"id": "branco",
+					"signal": "neg"
+				}
+			]
+		},
+		{
+			"id": "enc-pwr",
+			"label": "azul / preto (encoder)",
+			"kind": "power",
+			"dir": "sink",
+			"v": null,
+			"draw_mA": null,
+			"count": 1,
+			"src": "wiring.pinout[2..3]",
+			"note": "tensão de alimentação do encoder não publicada — a confirmar",
+			"pins": [
+				{
+					"id": "azul",
+					"signal": "pos"
+				},
+				{
+					"id": "preto",
+					"signal": "neg"
+				}
+			]
+		},
+		{
+			"id": "enc-out",
+			"label": "amarelo / verde (canais A/B)",
+			"kind": "data",
+			"dir": "out",
+			"protocol": "gpio",
+			"level_v": null,
+			"count": 2,
+			"src": "encoder; wiring.pinout[4..5]",
+			"note": "quadratura hall, 11 pulsos por volta do motor; pulsos por volta do EIXO dependem da redução, ainda não confirmada",
+			"pins": [
+				{
+					"id": "amarelo",
+					"signal": "enc-a",
+					"note": "canal A"
+				},
+				{
+					"id": "verde",
+					"signal": "enc-b",
+					"note": "canal B"
+				}
+			]
+		}
+	],
+	"specs": {
+		"motor-type": "brushed DC motor (370 size) with 25mm all-metal spur gearbox",
+		"input-voltage": {
+			"min": 6,
+			"nominal": 12,
+			"max": 24
+		},
+		"output-speed": 170,
+		"output-shaft": "D-shaped",
+		"rotation": "reversible (CW/CCW)",
+		"weight": 99,
+		"encoder": {
+			"encoder-type": "magnetic hall effect, quadrature (2 channels)",
+			"pulses-per-motor-revolution": 11,
+			"pulses-per-output-revolution": null,
+			"note": "pulses per output revolution = 11 x gearbox reduction ratio; ratio for this 170rpm version still to be confirmed"
+		},
+		"wiring": {
+			"wires": 6,
+			"pinout": [
+				{
+					"color": "red",
+					"function": "motor power supply +"
+				},
+				{
+					"color": "white",
+					"function": "motor power supply -"
+				},
+				{
+					"color": "blue",
+					"function": "encoder power supply +"
+				},
+				{
+					"color": "black",
+					"function": "encoder power supply -"
+				},
+				{
+					"color": "yellow",
+					"function": "encoder signal feedback (channel A)"
+				},
+				{
+					"color": "green",
+					"function": "encoder signal feedback (channel B)"
+				}
+			]
+		}
+	}
+}

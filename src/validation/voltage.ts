@@ -1,6 +1,6 @@
 import type { Issue, Library, Range } from '../model/types'
 import type { ArchEdge, ArchNode } from '../model/graph'
-import { resolveEdge, nodeLabel, effectiveVoltage } from '../model/graph'
+import { resolveEdge, nodeLabel, portRef, effectiveVoltage } from '../model/graph'
 import { rangeBounds, formatRange } from '../data/normalize'
 
 const fmt = (r: Range | null | undefined) =>
@@ -26,7 +26,7 @@ export function checkVoltage(
 
     const a = nodeLabel(from.node, from.component)
     const b = nodeLabel(to.node, to.component)
-    const where = `${a}.${from.port.id} → ${b}.${to.port.id}`
+    const where = `${portRef(from.node, from.component, from.port)} → ${portRef(to.node, to.component, to.port)}`
 
     const srcV = effectiveVoltage(from.node, from.port)
     const dstV = effectiveVoltage(to.node, to.port)
