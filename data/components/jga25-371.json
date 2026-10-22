@@ -19,11 +19,13 @@
 				"nom": 12,
 				"max": 24
 			},
-			"draw_mA": null,
+			"draw_min_mA": 53,
+			"draw_mA": 180,
+			"peak_mA": 360,
 			"required": true,
 			"count": 1,
 			"src": "input-voltage; wiring.pinout[0..1]",
-			"note": "a corrente do motor (nominal e de rotor bloqueado) NÃO está no components.json — a confirmar antes de dimensionar a ponte H",
+			"note": "medido em bancada a 12 V: 53 mA girando livre (draw_min_mA); 180 mA com o eixo freado à mão mas ainda girando (draw_mA, carga forte, NÃO é stall; 100 mA a 6 V e 50 mA a 3 V no mesmo ensaio). A corrente de stall real não foi medida: 180 mA é só um piso, e peak_mA=360 é estimativa conservadora (2x o piso, margem para o motor parar de vez e a tensão da bateria subir). Não testado acima de 12 V",
 			"pins": [
 				{
 					"id": "vermelho",
@@ -40,11 +42,14 @@
 			"label": "azul / preto (encoder)",
 			"kind": "power",
 			"dir": "sink",
-			"v": null,
+			"v": {
+				"min": 3.3,
+				"max": 5
+			},
 			"draw_mA": null,
 			"count": 1,
 			"src": "wiring.pinout[2..3]",
-			"note": "tensão de alimentação do encoder não publicada — a confirmar",
+			"note": "alimentação do encoder 3,3-5 V (informada pelo usuário); neste projeto alimentado com 3,3 V para casar com o nível lógico do ESP32. Corrente do encoder não medida",
 			"pins": [
 				{
 					"id": "azul",
@@ -62,10 +67,10 @@
 			"kind": "data",
 			"dir": "out",
 			"protocol": "gpio",
-			"level_v": null,
+			"level_v": 3.3,
 			"count": 2,
 			"src": "encoder; wiring.pinout[4..5]",
-			"note": "quadratura hall, 11 pulsos por volta do motor; pulsos por volta do EIXO dependem da redução, ainda não confirmada",
+			"note": "quadratura hall, 11 pulsos por volta do motor; redução medida 33,97:1 (~34:1), logo ~374 pulsos por volta do EIXO por canal (~1496 contando as 4 bordas); nível de saída segue a alimentação do encoder (3,3 V neste projeto)",
 			"pins": [
 				{
 					"id": "amarelo",
@@ -94,8 +99,8 @@
 		"encoder": {
 			"encoder-type": "magnetic hall effect, quadrature (2 channels)",
 			"pulses-per-motor-revolution": 11,
-			"pulses-per-output-revolution": null,
-			"note": "pulses per output revolution = 11 x gearbox reduction ratio; ratio for this 170rpm version still to be confirmed"
+			"pulses-per-output-revolution": 374,
+			"note": "pulses per output revolution = 11 x gearbox ratio (33.97 measured, ~34) = ~374 per channel; ~1496 counting all four quadrature edges"
 		},
 		"wiring": {
 			"wires": 6,
@@ -125,6 +130,33 @@
 					"function": "encoder signal feedback (channel B)"
 				}
 			]
+		},
+		"gear-ratio": 34,
+		"measured": {
+			"method": "bancada, motor girando livre via ESP32 (PWM como tensão de comando 1-12 V); velocidade do eixo de saída por vídeo (iPhone, calculada pelo Claude, sem checagem manual), velocidade do eixo do motor pelo encoder, corrente no mostrador da fonte Winptek",
+			"output-speed-fit": "omega[rad/s] = 1.521 * V - 0.45 (R2 = 0.99999, 1-12 V, eixo de saída)",
+			"motor-speed-fit": "omega[rad/s] = 51.64 * V - 15.0 (R2 = 0.99997, 1-12 V, eixo do motor)",
+			"start-voltage": 0.3,
+			"output-speed-at-12V": {
+				"rad_s": 17.85,
+				"rpm": 170.5
+			},
+			"motor-speed-at-12V": {
+				"rad_s": 607,
+				"rpm": 5796
+			},
+			"no-load-current": {
+				"12V": 0.053,
+				"6V": 0.022,
+				"3V": 0.008
+			},
+			"held-shaft-current": {
+				"12V": 0.18,
+				"6V": 0.1,
+				"3V": 0.05,
+				"note": "eixo freado à mão sem parar: carga forte, não stall; piso para a corrente de stall"
+			},
+			"note": "razão encoder/vídeo = 33.97 +- 0.04 de 3 a 12 V (1 V dá 35.05, erro de leitura do vídeo em baixa velocidade); 170.5 rpm a 12 V confere com os 170 rpm de catálogo; corrente do eixo travado é limite inferior do stall"
 		}
 	}
 }

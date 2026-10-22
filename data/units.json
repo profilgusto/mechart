@@ -72,5 +72,7 @@
 	"stall-torque": "kilogram-force centimeters",
 	"operating-speed": "seconds per 60 degrees of servo rotation, at the given voltage",
 	"dead-band-width": "microseconds",
-	"wire-length": "centimeters"
+	"wire-length": "centimeters",
+	"gear-ratio": "ratio (input turns per output turn)",
+	"measured": "volts (start-voltage, keys ending in V); amperes (currents); rad/s and rpm (speeds)"
 }
