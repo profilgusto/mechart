@@ -42,6 +42,9 @@
 			"protocol": "i2c",
 			"level_v": null,
 			"count": 1,
+			"addresses": [
+				"0x39"
+			],
 			"src": "communications.interface; communications.pinout",
 			"note": "pinos digitais do chip toleram até 3,6 V; o nível lógico da placa não está publicado",
 			"pins": [

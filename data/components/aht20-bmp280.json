@@ -39,6 +39,13 @@
 			"protocol": "i2c",
 			"level_v": null,
 			"count": 1,
+			"addresses": [
+				"0x38",
+				[
+					"0x76",
+					"0x77"
+				]
+			],
 			"src": "bmp280.communications.note (ambos os sensores no mesmo barramento I2C)",
 			"note": "dois endereços num único par SCL/SDA; pull-ups externos necessários (ex. 10k)",
 			"pins": [

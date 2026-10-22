@@ -41,6 +41,12 @@
 			"protocol": "i2c",
 			"level_v": 3.3,
 			"count": 1,
+			"addresses": [
+				[
+					"0x4A",
+					"0x4B"
+				]
+			],
 			"exclusiveWith": [
 				"spi",
 				"uart"

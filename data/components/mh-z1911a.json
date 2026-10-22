@@ -67,6 +67,9 @@
 			"protocol": "i2c",
 			"level_v": 3.3,
 			"count": 1,
+			"addresses": [
+				"0x31"
+			],
 			"exclusiveWith": [
 				"uart"
 			],
