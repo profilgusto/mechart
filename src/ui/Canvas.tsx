@@ -9,6 +9,7 @@ import {
   type NodeChange,
   MarkerType,
   PanOnScrollMode,
+  SelectionMode,
   applyNodeChanges,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
@@ -17,7 +18,7 @@ import type { ArchEdge, ArchNode } from '../model/graph'
 import { handleId, nodeLabel, packTotals, effectiveVoltage, resolveEdge } from '../model/graph'
 import { computePower, formatTriple } from '../model/power'
 import { formatRangeCompact, rangeBounds } from '../data/normalize'
-import { expandEdge, uartInstancesOf } from '../model/pins'
+import { expandEdge, pinsOf, pinParaFio, portInstancesOf, portPin } from '../model/pins'
 import ComponentNode, { type ComponentFlowNode } from './ComponentNode'
 import { PROTOCOL_COLOR } from './legend'
 
@@ -144,6 +145,8 @@ export default function Canvas({
   
   // Estado interno do ReactFlow para posições durante drag
   const [internalNodes, setInternalNodes] = useState<ComponentFlowNode[]>([])
+  /** Ligacao clicada: ela e os dois blocos que ela une ficam em destaque. */
+  const [edgeFocusId, setEdgeFocusId] = useState<string | null>(null)
 
   /**
    * O botao "+" da biblioteca nao sabe onde o usuario esta olhando: sem isso o
@@ -196,8 +199,20 @@ export default function Canvas({
       }
       return { nodes: keep, edges: keepEdges }
     }
-    if (selectedNodeIds.length === 0) return null
+    const picked = edgeFocusId ? edges.find((e) => e.id === edgeFocusId) : undefined
+    if (picked && !connectFrom) {
+      return { nodes: new Set([picked.source, picked.target]), edges: new Set([picked.id]) }
+    }
+    if (selectedNodeIds.length === 0 || connectFrom) return null
     const keep = new Set(selectedNodeIds)
+    // Varios blocos (Shift): so eles, sem puxar os vizinhos; as ligacoes entre eles seguem visiveis.
+    if (selectedNodeIds.length > 1) {
+      const between = new Set<string>()
+      for (const e of edges) {
+        if (keep.has(e.source) && keep.has(e.target)) between.add(e.id)
+      }
+      return { nodes: keep, edges: between }
+    }
     const keepEdges = new Set<string>()
     for (const e of edges) {
       if (keep.has(e.source) || keep.has(e.target)) keepEdges.add(e.id)
@@ -209,7 +224,7 @@ export default function Canvas({
       }
     }
     return { nodes: keep, edges: keepEdges }
-  }, [issueFocus, selectedNodeIds, edges])
+  }, [issueFocus, selectedNodeIds, connectFrom, edges, edgeFocusId])
 
   /** Enquadra os blocos na area livre do canvas, descontando as barras laterais e a inferior. */
   const frameNodes = (ids: string[], pad: number, maxZoom: number) => {
@@ -263,12 +278,11 @@ export default function Canvas({
     const newNodes = nodes.flatMap((n) => {
       const component = library.byId[n.componentId]
       if (!component) return []
-      const uartInstances: Record<string, ReturnType<typeof uartInstancesOf>> = {}
+      const portInstances: Record<string, ReturnType<typeof portInstancesOf>> = {}
       if (expanded) {
         for (const p of component.ports) {
-          if (p.protocol !== 'uart') continue
-          const inst = uartInstancesOf(library, nodes, edges, n, p)
-          if (inst) uartInstances[p.id] = inst
+          const inst = portInstancesOf(library, nodes, edges, n, p)
+          if (inst) portInstances[p.id] = inst
         }
       }
       return [
@@ -288,7 +302,7 @@ export default function Canvas({
               e.source === n.id ? [e.sourcePort] : e.target === n.id ? [e.targetPort] : [],
             ),
             incoming: incoming[n.id] ?? {},
-            uartInstances,
+            portInstances,
             expanded,
             power: powerView ? (nodePower[n.id] ?? null) : null,
             idAsTitle,
@@ -369,19 +383,33 @@ export default function Canvas({
         }
 
         if (expanded) {
-          const { links } = expandEdge(library, nodes, e)
-          if (links.length > 0) {
-            const tgtComp = library.byId[nodes.find((n) => n.id === e.target)?.componentId ?? '']
-            const targetPort = tgtComp?.ports.find((p) => p.id === e.targetPort)
-            const srcNode = nodes.find((n) => n.id === e.source)
-            const tgtNode = nodes.find((n) => n.id === e.target)
-            // So preenche quando esta porta tem 2+ ligacoes simultaneas -- e so
-            // aí que o card abre uma linha por instância (ver ComponentNode).
-            const srcMulti =
-              srcNode && port ? uartInstancesOf(library, nodes, edges, srcNode, port) : null
-            const tgtMulti =
-              tgtNode && targetPort ? uartInstancesOf(library, nodes, edges, tgtNode, targetPort) : null
+          const srcNode = nodes.find((n) => n.id === e.source)
+          const tgtNode = nodes.find((n) => n.id === e.target)
+          const tgtComp = library.byId[tgtNode?.componentId ?? '']
+          const targetPort = tgtComp?.ports.find((p) => p.id === e.targetPort)
+          // So preenche quando esta porta tem 2+ ligacoes simultaneas -- e so
+          // aí que o card abre uma linha por instância (ver ComponentNode).
+          const srcMulti =
+            srcNode && port ? portInstancesOf(library, nodes, edges, srcNode, port) : null
+          const tgtMulti =
+            tgtNode && targetPort ? portInstancesOf(library, nodes, edges, tgtNode, targetPort) : null
+          const srcPins = srcNode && srcComp && port ? pinsOf(srcNode, srcComp, port) : null
+          const tgtPins = tgtNode && tgtComp && targetPort ? pinsOf(tgtNode, tgtComp, targetPort) : null
 
+          let links = expandEdge(library, nodes, e).links
+          // Sem par de pinos casados, cada pino do lado que tem pinagem sai para o
+          // conector (ou para a bolinha da instancia) do outro lado.
+          if (links.length === 0 && port && targetPort) {
+            if (srcPins && !tgtPins) {
+              links = srcPins.map((sp) => ({ id: `${e.id}::${sp.id}`, sourcePin: sp, targetPin: pinParaFio(targetPort, sp, srcPins) }))
+            } else if (tgtPins && !srcPins) {
+              links = tgtPins.map((tp) => ({ id: `${e.id}::${tp.id}`, sourcePin: pinParaFio(port, tp, tgtPins), targetPin: tp }))
+            } else if (!srcPins && !tgtPins && (srcMulti || tgtMulti)) {
+              links = [{ id: e.id, sourcePin: portPin(port), targetPin: portPin(targetPort) }]
+            }
+          }
+
+          if (links.length > 0 && port && targetPort) {
             // Uma linha por condutor, cada uma chegando no seu pino. tx sempre
             // manda e rx sempre recebe: expandEdge as vezes pareia com os papeis
             // trocados (a origem da aresta fica com o pino rx), entao a seta
@@ -396,14 +424,30 @@ export default function Canvas({
               const toPin = reversed ? l.sourcePin : l.targetPin
               const fromMulti = reversed ? tgtMulti : srcMulti
               const toMulti = reversed ? srcMulti : tgtMulti
+              const fromPins = reversed ? tgtPins : srcPins
+              const toPins = reversed ? srcPins : tgtPins
+
+              // Porta sem pinagem so tem handle proprio quando abre em instancias.
+              const handle = (
+                role: 'out' | 'in',
+                portId: string,
+                pin: typeof fromPin,
+                pins: typeof fromPins,
+                multi: typeof fromMulti,
+              ) =>
+                pins
+                  ? handleId(role, portId, multi ? `${e.id}|${pin.id}` : pin.id)
+                  : multi
+                    ? handleId(role, portId, `${e.id}|${pin.id}`)
+                    : handleId(role, portId)
 
               return {
                 ...base,
                 id: l.id,
                 source: fromNode,
                 target: toNode,
-                sourceHandle: handleId('out', fromPort, fromMulti ? `${e.id}|${fromPin.id}` : fromPin.id),
-                targetHandle: handleId('in', toPort, toMulti ? `${e.id}|${toPin.id}` : toPin.id),
+                sourceHandle: handle('out', fromPort, fromPin, fromPins, fromMulti),
+                targetHandle: handle('in', toPort, toPin, toPins, toMulti),
                 // Sem rotulo: as duas pontas ja nomeiam o pino e o sinal, e com
                 // varios condutores paralelos os rotulos so se atropelam.
                 style: { stroke: color, strokeWidth: 1.4, strokeDasharray: isPower ? undefined : '6 4' },
@@ -481,17 +525,32 @@ export default function Canvas({
         // Shift acrescenta blocos a selecao; com varios marcados, arrastar move todos.
         multiSelectionKeyCode="Shift"
         selectionKeyCode="Shift"
-        onSelectionChange={({ nodes: sel }) => onSelectionChange(sel.map((n) => n.id))}
+        // Basta tocar parte do card com o retângulo de seleção para entrar no conjunto.
+        selectionMode={SelectionMode.Partial}
+        onSelectionChange={({ nodes: sel }) => {
+          if (sel.length > 0) setEdgeFocusId(null)
+          onSelectionChange(sel.map((n) => n.id))
+        }}
+        onEdgeClick={(_, ed) => {
+          if (connectFrom) return
+          // No modo expandido a linha vem por condutor ("<ligacao>::<pino>").
+          const base = edges.find((e) => e.id === ed.id || ed.id.startsWith(`${e.id}::`))
+          setEdgeFocusId(base?.id ?? null)
+        }}
         onNodeClick={(_, n) => {
           if (connectFrom && connectFrom !== n.id) onPickTarget(n.id)
         }}
         onNodeDoubleClick={(_, n) => onNodeOpen(n.id)}
         onPaneClick={() => {
+          setEdgeFocusId(null)
           onClearIssueFocus()
           if (connectFrom) onCancelConnect()
         }}
         // Ligar e por clique, nao por arrasto entre conectores.
         nodesConnectable={false}
+        // Ligando, clicar no destino nao o seleciona: o React Flow e o efeito dos nos
+        // (que devolve a selecao da app) brigariam em loop e a tela ficaria vazia.
+        elementsSelectable={!connectFrom}
         onDragOver={(e) => {
           e.preventDefault()
           e.dataTransfer.dropEffect = 'move'

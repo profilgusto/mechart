@@ -98,7 +98,7 @@ export function expandEdge(
   return { links, soltos }
 }
 
-export type UartInstance = {
+export type PortInstance = {
   /** Id da aresta que esta instância representa -- namespace dos handles. */
   edgeId: string
   /** "UART0", "ligação 2"... o que identifica este pino físico no card. */
@@ -110,28 +110,71 @@ export type UartInstance = {
 }
 
 /**
- * Quando o MESMO componente liga mais de uma vez numa porta UART (cada
- * ligação simultânea é um pino físico diferente, ao contrário de um
- * barramento), o card precisa mostrar cada uma separada, com Tx/Rx corretos.
- * Só se aplica a portas ponto-a-ponto (`protocol: "uart"`) com 2+ ligações;
- * um barramento (I²C/SPI) continua mostrando uma linha só, porque ali as
- * ligações de fato dividem os mesmos fios.
+ * O "pino" de uma porta sem pinagem declarada: um condutor so, que leva o nome
+ * da propria porta. Da a essas ligacoes uma bolinha propria no modo condutores.
  */
-export function uartInstancesOf(
+export const portPin = (port: Port): Pin => ({ id: port.label ?? port.id, signal: '' })
+
+/** Barramentos: todos os dispositivos dividem os mesmos fios, em paralelo. */
+const BARRAMENTOS = new Set(['i2c', 'spi', 'can'])
+
+/**
+ * A porta e um ponto fisico UNICO que varias ligacoes dividem: o OUT+/OUT- de
+ * um DC-DC alimenta todas as cargas pelos mesmos dois terminais, e o SDA/SCL
+ * de um barramento vai em paralelo a todos os dispositivos.
+ */
+export const portaCompartilhada = (port: Port) =>
+  port.kind === 'power' || BARRAMENTOS.has(port.protocol ?? '')
+
+/**
+ * O "pino" que uma porta SEM pinagem tem para receber um condutor do outro lado.
+ * Dois fios (A e B de um encoder) ocupam dois GPIO fisicos, entao cada um ganha o
+ * seu; com um fio so, a porta tem um condutor unico.
+ */
+export function pinParaFio(port: Port, fio: Pin, fios: Pin[]): Pin {
+  if (fios.length < 2) return portPin(port)
+  // tx/rx definem o sentido da linha: o pino sintetico nao pode copiar isso.
+  return { id: `${port.label ?? port.id} (${fio.id})`, signal: fio.signal === 'tx' || fio.signal === 'rx' ? '' : fio.signal }
+}
+
+/**
+ * Quando o MESMO componente liga mais de uma vez numa porta ponto a ponto (PWM,
+ * GPIO, UART, USB), cada ligacao e um fio fisico diferente, e o card precisa
+ * mostrar cada uma separada: uma bolinha por ligacao. Portas compartilhadas
+ * (energia, I²C/SPI/CAN) e as de 0 ou 1 ligacao continuam com uma bolinha so.
+ */
+export function portInstancesOf(
   lib: Library,
   nodes: ArchNode[],
   edges: ArchEdge[],
   node: ArchNode,
   port: Port,
-): UartInstance[] | null {
-  if (port.protocol !== 'uart') return null
+): PortInstance[] | null {
+  if (portaCompartilhada(port)) return null
 
   const attached = edges.filter(
     (e) =>
       (e.source === node.id && e.sourcePort === port.id) ||
       (e.target === node.id && e.targetPort === port.id),
   )
-  if (attached.length < 2) return null
+
+  const component = lib.byId[node.componentId]
+  const declared = component ? pinsOf(node, component, port) : null
+
+  // Os fios que o outro lado desta ligacao traz (so importam se esta porta nao
+  // tem pinagem propria: sao eles que pedem uma bolinha cada).
+  const fiosDe = (edge: ArchEdge): Pin[] | null => {
+    if (declared) return null
+    const isSource = edge.source === node.id
+    const other = nodes.find((n) => n.id === (isSource ? edge.target : edge.source))
+    const otherComp = other ? lib.byId[other.componentId] : undefined
+    const otherPort = otherComp?.ports.find(
+      (p) => p.id === (isSource ? edge.targetPort : edge.sourcePort),
+    )
+    return other && otherComp && otherPort ? pinsOf(other, otherComp, otherPort) : null
+  }
+  const algumMultifio = attached.some((e) => (fiosDe(e)?.length ?? 0) >= 2)
+  if (attached.length < 2 && !algumMultifio) return null
 
   return attached.map((edge, i) => {
     const isSource = edge.source === node.id
@@ -145,14 +188,25 @@ export function uartInstancesOf(
     // não de quem é "source"/"target" da aresta -- expandEdge pareia tx com rx
     // cruzado, e o lado que fica com o "sourcePin" pode ser o que recebe.
     const exp = expandEdge(lib, nodes, edge)
-    const pins: { pin: Pin; role: 'in' | 'out' }[] = []
+    const locais: Pin[] = []
     for (const link of exp.links) {
       const localPin = isSource ? link.sourcePin : link.targetPin
-      if (pins.some((p) => p.pin.id === localPin.id)) continue
-      const role: 'in' | 'out' =
-        localPin.signal === 'tx' ? 'out' : localPin.signal === 'rx' ? 'in' : isSource ? 'out' : 'in'
-      pins.push({ pin: localPin, role })
+      if (!locais.some((p) => p.id === localPin.id)) locais.push(localPin)
     }
+    // Sem par de pinos (o outro lado nao declara pinagem): todos os pinos locais.
+    // Sem pinagem nenhuma: o condutor unico da porta.
+    const fios = fiosDe(edge)
+    const usados =
+      locais.length > 0
+        ? locais
+        : (declared ?? (fios ? fios.map((f) => pinParaFio(port, f, fios)) : [portPin(port)]))
+
+    const pins = usados.map((pin) => ({
+      pin,
+      role: (pin.signal === 'tx' ? 'out' : pin.signal === 'rx' ? 'in' : isSource ? 'out' : 'in') as
+        | 'in'
+        | 'out',
+    }))
 
     return {
       edgeId: edge.id,

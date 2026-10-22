@@ -3,7 +3,7 @@ import { Handle, Position, type NodeProps, type Node } from '@xyflow/react'
 import type { Component, Issue, Pin, Port } from '../model/types'
 import { CATEGORY_COLOR, formatRangeCompact, rangeBounds } from '../data/normalize'
 import { nodeLabel, handleId, rolesOf, roleOf, missingRequired, effectiveVoltage, type ArchNode } from '../model/graph'
-import { pinsOf, type UartInstance } from '../model/pins'
+import { pinsOf, type PortInstance } from '../model/pins'
 import NodeIssueBadge from './NodeIssueBadge'
 import { getTypeHierarchy } from '../model/component-type'
 import {
@@ -30,7 +30,7 @@ export type ComponentNodeData = {
   /** Por porta de entrada: a tensão que chega, vinda de quem alimenta. */
   incoming: Record<string, { text: string; range: boolean; level: 'bad' | 'warn' | null }>
   /** Portas UART com 2+ ligações simultâneas: uma linha por instância física. */
-  uartInstances: Record<string, UartInstance[] | null>
+  portInstances: Record<string, PortInstance[] | null>
   connecting: boolean
   isOrigin: boolean
   /** Mais de um bloco selecionado: selecao em bloco, nao edicao de um so. */
@@ -106,13 +106,15 @@ function PinRow({
  * diferente, ex. UART0 vs UART5) ganha seu próprio bloco, com Rx recebendo
  * pela esquerda e Tx saindo pela direita -- nunca os dois no mesmo pino.
  */
-function UartInstanceRows({ port, instances }: { port: Port; instances: UartInstance[] }) {
+const GENERIC_LABEL = /^ligação \d+$/
+
+function InstanceRows({ port, instances }: { port: Port; instances: PortInstance[] }) {
   return (
     <div className="node__uart-instances">
       {instances.map((inst) => (
         <div key={inst.edgeId} className="uartinst">
-          <div className="uartinst__head">
-            <span className="uartinst__label">{inst.label}</span>
+          <div className={`uartinst__head${GENERIC_LABEL.test(inst.label) ? ' uartinst__head--center' : ''}`}>
+            {GENERIC_LABEL.test(inst.label) ? null : <span className="uartinst__label">{inst.label}</span>}
             <span className="uartinst__other">↔ {inst.otherLabel}</span>
           </div>
           {inst.pins.map(({ pin, role }) => (
@@ -258,10 +260,13 @@ function PortRow({
   const recebe = papeis.includes('in')
   const envia = papeis.includes('out')
   const papel = roleOf(port)
+  // Nome igual ao tipo (ex. "UART" / "UART", "I²C" / "I2C"): mostra só o colorido, centralizado.
+  const norm = (t: string) => t.replace(/²/g, '2').toLowerCase()
+  const dupe = port.kind !== 'power' && norm(port.label ?? port.id) === norm(port.protocol ?? '')
 
   return (
     <div
-      className={`prow prow--${papel}${ligada ? ' prow--on' : ''}${falta ? ' prow--missing' : ''}${incerta(port) ? ' prow--unknown' : ''}`}
+      className={`prow prow--${papel}${dupe ? ' prow--solo' : ''}${ligada ? ' prow--on' : ''}${falta ? ' prow--missing' : ''}${incerta(port) ? ' prow--unknown' : ''}`}
       title={falta ? 'obrigatória e ainda não ligada' : undefined}
     >
       {recebe && showHandle ? (
@@ -289,7 +294,7 @@ function PortRow({
           {inVolt}
         </span>
       ) : null}
-      <span className="prow__name">{port.label ?? port.id}</span>
+      {dupe ? null : <span className="prow__name">{port.label ?? port.id}</span>}
       {volt ? (
         <span
           className={`prow__volt${range ? ' prow__volt--range' : ''}`}
@@ -336,7 +341,7 @@ export default function ComponentNode({ id, data, selected }: NodeProps<Componen
     arrangement,
     connected,
     incoming,
-    uartInstances,
+    portInstances,
     connecting,
     isOrigin,
     multiSelected,
@@ -523,7 +528,7 @@ export default function ComponentNode({ id, data, selected }: NodeProps<Componen
           {visiveis.map((p) => {
             const ligada = ligadas.has(p.id)
             const papeis = rolesOf(p)
-            const instances = expanded ? uartInstances[p.id] : null
+            const instances = expanded ? portInstances[p.id] : null
             const pins = !instances && expanded && ligada ? pinsOf(node, component, p) : null
             // Saída (ou porta comum) de energia: mostra a tensão desta instância.
             // Faixa -- bateria, BMS, trilho que segue VM -- ganha selo próprio:
@@ -550,7 +555,7 @@ export default function ComponentNode({ id, data, selected }: NodeProps<Componen
                   showHandle={!expanded || (!instances && !pins)}
                 />
                 {instances ? (
-                  <UartInstanceRows port={p} instances={instances} />
+                  <InstanceRows port={p} instances={instances} />
                 ) : pins ? (
                   <div className="node__pins">
                     {pins.map((pin) => (

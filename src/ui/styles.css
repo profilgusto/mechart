@@ -596,6 +596,7 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.prow--solo .prow__kind { flex: 1; text-align: center; }
 .prow__kind {
   flex: none;
   font-size: 9px;
@@ -1297,6 +1298,7 @@ body {
   padding: 3px 10px 1px 22px;
   font-size: 8px;
 }
+.uartinst__head--center { justify-content: center; padding-left: 10px; }
 .uartinst__label {
   font-weight: 700;
   color: var(--text);
