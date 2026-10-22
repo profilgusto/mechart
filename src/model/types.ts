@@ -28,6 +28,44 @@ export type Pin = {
   note?: string
 }
 
+/**
+ * Um pino fisico do componente (o furo do header). `caps` diz o que ele sabe
+ * fazer alem de GPIO: "adc", "touch"... Funcoes que o chip roteia para qualquer
+ * GPIO (I²C, UART, SPI, PWM) nao entram aqui: elas usam a capacidade "gpio".
+ */
+export type PhysPin = {
+  id: string
+  caps: string[]
+  /**
+   * caution: funciona, mas tem efeito colateral (strapping, USB, UART de log) --
+   * so e usado quando os pinos livres acabam. reserved: nunca disponivel.
+   */
+  level?: 'caution' | 'reserved'
+  /** Por que `level` foi marcado. */
+  why?: string
+  /** Funcao padrao serigrafada/documentada ("SDA", "LED RGB"): so informativo. */
+  note?: string
+}
+
+export type Pinout = {
+  src: string
+  pins: PhysPin[]
+}
+
+/** Quantos pinos fisicos de `pinout` uma porta consome ao ser ligada. */
+export type PinUse = {
+  /** Capacidade exigida do pino: "gpio", "adc"... */
+  needs: string
+  /**
+   * Pinos gastos UMA vez, qualquer que seja o numero de dispositivos: um
+   * barramento (I²C: SDA+SCL; SPI: SCK+MOSI+MISO). Sem isto, cada fio de cada
+   * ligacao gasta um pino.
+   */
+  shared?: number
+  /** Pinos extras por dispositivo ligado (o chip-select de cada escravo SPI). */
+  perConnection?: number
+}
+
 export type Port = {
   id: string
   label?: string
@@ -82,6 +120,15 @@ export type Port = {
    * um barramento (I²C/SPI), onde várias ligações dividem os mesmos fios.
    */
   instances?: string[]
+  /**
+   * Enderecos que este dispositivo ocupa num barramento (I²C), um item por chip.
+   * Texto "0x38" = endereco fixo; lista ["0x4A", "0x4B"] = o chip aceita qualquer
+   * um deles, escolhido por um pino (ex. SA0 do BNO086). Sem isto, a ferramenta
+   * nao tem como saber se dois dispositivos do mesmo barramento colidem.
+   */
+  addresses?: (string | string[])[]
+  /** De onde vem o pino fisico desta porta; sem isto ela nao gasta pino do `pinout`. */
+  uses?: PinUse
   /** Caminho nos specs do componente de onde o dado veio (rastreabilidade). */
   src?: string
   note?: string
@@ -123,6 +170,8 @@ export type Component = {
   /** A ficha do arquivo do componente: type e description no topo, depois os specs. */
   raw: Record<string, unknown>
   ports: Port[]
+  /** Pinagem fisica; habilita a verificacao de quantos pinos o projeto pede. */
+  pinout?: Pinout
   instance: InstanceSpec
   /** Fronteira do projeto: fonte externa, nao uma peca de catalogo. */
   external: boolean
@@ -141,7 +190,7 @@ export type IssueLevel = 'error' | 'warning' | 'unverifiable'
 export type Issue = {
   level: IssueLevel
   /** Regra que gerou o aviso. */
-  rule: 'voltage' | 'protocol' | 'port-count' | 'budget' | 'topology' | 'missing' | 'pins'
+  rule: 'voltage' | 'protocol' | 'port-count' | 'budget' | 'topology' | 'missing' | 'pins' | 'address' | 'pinout'
   message: string
   /** Nos e arestas a destacar no canvas. */
   nodeIds?: string[]

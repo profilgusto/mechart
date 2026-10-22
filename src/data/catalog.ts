@@ -1,4 +1,4 @@
-import type { Category, Component, InstanceSpec, Port } from '../model/types'
+import type { Category, Component, InstanceSpec, Pinout, Port } from '../model/types'
 import type { ComponentType } from '../model/component-type'
 
 // Modulo puro (sem imports de valor): o app e os scripts de `scripts/` leem o
@@ -24,6 +24,8 @@ export type ComponentFile = {
   external?: boolean
   instance?: InstanceSpec
   ports: Port[]
+  /** Pinagem fisica (furos do header), para conferir quantos pinos o projeto pede. */
+  pinout?: Pinout
   /** A ficha tecnica crua, sem `description` e `type` (que sobem para o topo). */
   specs?: Record<string, unknown>
 }
@@ -78,6 +80,7 @@ export function toComponent(
     type,
     raw: { type, description, ...file.specs },
     ports: file.ports,
+    pinout: file.pinout,
     instance: file.instance ?? {},
     external,
   }

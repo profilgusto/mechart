@@ -28,6 +28,24 @@ for (const c of catalog.values()) {
 }
 
 for (const [id, c] of catalog) {
+  const pinIds = new Set()
+  const caps = new Set()
+  for (const pin of c.pinout?.pins ?? []) {
+    if (pinIds.has(pin.id)) problems.push(`${id}: pino "${pin.id}" repetido no pinout`)
+    pinIds.add(pin.id)
+    pin.caps.forEach((cap) => caps.add(cap))
+    if (pin.level && !['caution', 'reserved'].includes(pin.level)) {
+      problems.push(`${id}.${pin.id}: level "${pin.level}" inválido (caution ou reserved)`)
+    }
+    if (pin.level && !pin.why) problems.push(`${id}.${pin.id}: falta "why" explicando o level`)
+  }
+  for (const p of c.ports) {
+    if (!p.uses) continue
+    if (!c.pinout) problems.push(`${id}.${p.id}: "uses" sem "pinout" no componente`)
+    else if (!caps.has(p.uses.needs)) {
+      problems.push(`${id}.${p.id}: uses.needs "${p.uses.needs}" não existe em nenhum pino do pinout`)
+    }
+  }
   const ids = new Set()
   for (const p of c.ports) {
     if (ids.has(p.id)) problems.push(`${id}: porta "${p.id}" repetida`)
@@ -37,6 +55,11 @@ for (const [id, c] of catalog) {
     if (!p.src) problems.push(`${id}.${p.id}: falta "src" (de onde veio o dado)`)
     for (const other of p.exclusiveWith ?? []) {
       if (!ids.has(other)) problems.push(`${id}.${p.id}: exclusiveWith "${other}" não existe`)
+    }
+    for (const a of (p.addresses ?? []).flat()) {
+      if (!/^0x[0-9a-f]{1,2}$/i.test(a) || parseInt(a, 16) > 0x7f) {
+        problems.push(`${id}.${p.id}: endereço "${a}" inválido (esperado 0x00–0x7F)`)
+      }
     }
     for (const target of p.only ?? []) {
       if (!catalog.has(target) && !typeNames.has(target)) {

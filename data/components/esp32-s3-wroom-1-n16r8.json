@@ -49,6 +49,9 @@
 			"protocol": "gpio",
 			"level_v": 3.3,
 			"count": 33,
+			"uses": {
+				"needs": "gpio"
+			},
 			"src": "communications.gpio.count 36, menos IO35/IO36/IO37 usados pela PSRAM octal",
 			"note": "4 GPIOs de strapping entre os 33"
 		},
@@ -60,6 +63,9 @@
 			"protocol": "uart",
 			"level_v": 3.3,
 			"count": 1,
+			"uses": {
+				"needs": "gpio"
+			},
 			"src": "communications.interfaces",
 			"note": "multiplexado nos GPIO; o número de instâncias não está registrado no components.json",
 			"pins": [
@@ -81,6 +87,10 @@
 			"protocol": "i2c",
 			"level_v": 3.3,
 			"count": 112,
+			"uses": {
+				"needs": "gpio",
+				"shared": 2
+			},
 			"src": "communications.interfaces",
 			"note": "multiplexado nos GPIO; barramento compartilhado, não ponto-a-ponto — count reflete o limite de endereçamento 7-bit do I²C (128 endereços, 16 reservados), fonte: I2C-bus specification (NXP UM10204), não a quantidade de fios",
 			"pins": [
@@ -102,6 +112,11 @@
 			"protocol": "spi",
 			"level_v": 3.3,
 			"count": 1,
+			"uses": {
+				"needs": "gpio",
+				"shared": 3,
+				"perConnection": 1
+			},
 			"src": "communications.interfaces",
 			"note": "multiplexado nos GPIO"
 		},
@@ -113,6 +128,10 @@
 			"protocol": "can",
 			"level_v": 3.3,
 			"count": 1,
+			"uses": {
+				"needs": "gpio",
+				"shared": 2
+			},
 			"src": "communications.interfaces",
 			"note": "compatível ISO 11898-1; exige transceptor externo"
 		},
@@ -124,6 +143,9 @@
 			"protocol": "pwm",
 			"level_v": 3.3,
 			"count": 6,
+			"uses": {
+				"needs": "gpio"
+			},
 			"src": "communications.interfaces (MCPWM, LED PWM)",
 			"note": "o número exato de canais não está registrado no components.json; 6 é o mínimo prático de um MCPWM. MCPWM + contador de pulsos fazem desta placa a candidata natural ao controle dos motores",
 			"pins": [
@@ -141,6 +163,9 @@
 			"protocol": "analog",
 			"level_v": 3.3,
 			"count": 1,
+			"uses": {
+				"needs": "adc"
+			},
 			"src": "communications.analog",
 			"note": "número de canais não registrado no components.json",
 			"pins": [
@@ -160,6 +185,299 @@
 			"src": "wireless"
 		}
 	],
+	"pinout": {
+		"src": "pinagem da placa YD-ESP32-S3 (clone do ESP32-S3-DevKitC-1) publicada em mischianti.org; ADC1=GPIO1-10, ADC2=GPIO11-20 e touch=GPIO1-14 conforme o datasheet do ESP32-S3; GPIO35-37 ocupados pela PSRAM octal do N16R8; I²C/UART/SPI/PWM sao roteados pela matriz GPIO para qualquer pino",
+		"pins": [
+			{
+				"id": "GPIO0",
+				"caps": [
+					"gpio"
+				],
+				"level": "caution",
+				"why": "pino de strapping: define o modo de boot/JTAG na energização"
+			},
+			{
+				"id": "GPIO1",
+				"caps": [
+					"gpio",
+					"adc",
+					"touch"
+				]
+			},
+			{
+				"id": "GPIO2",
+				"caps": [
+					"gpio",
+					"adc",
+					"touch"
+				]
+			},
+			{
+				"id": "GPIO3",
+				"caps": [
+					"gpio",
+					"adc",
+					"touch"
+				],
+				"level": "caution",
+				"why": "pino de strapping: define o modo de boot/JTAG na energização"
+			},
+			{
+				"id": "GPIO4",
+				"caps": [
+					"gpio",
+					"adc",
+					"touch"
+				]
+			},
+			{
+				"id": "GPIO5",
+				"caps": [
+					"gpio",
+					"adc",
+					"touch"
+				]
+			},
+			{
+				"id": "GPIO6",
+				"caps": [
+					"gpio",
+					"adc",
+					"touch"
+				]
+			},
+			{
+				"id": "GPIO7",
+				"caps": [
+					"gpio",
+					"adc",
+					"touch"
+				]
+			},
+			{
+				"id": "GPIO8",
+				"caps": [
+					"gpio",
+					"adc",
+					"touch"
+				],
+				"note": "SDA padrão (Arduino)"
+			},
+			{
+				"id": "GPIO9",
+				"caps": [
+					"gpio",
+					"adc",
+					"touch"
+				],
+				"note": "SCL padrão (Arduino)"
+			},
+			{
+				"id": "GPIO10",
+				"caps": [
+					"gpio",
+					"adc",
+					"touch"
+				],
+				"note": "SS padrão (SPI)"
+			},
+			{
+				"id": "GPIO11",
+				"caps": [
+					"gpio",
+					"adc",
+					"touch"
+				],
+				"note": "MOSI padrão (SPI)"
+			},
+			{
+				"id": "GPIO12",
+				"caps": [
+					"gpio",
+					"adc",
+					"touch"
+				],
+				"note": "SCK padrão (SPI)"
+			},
+			{
+				"id": "GPIO13",
+				"caps": [
+					"gpio",
+					"adc",
+					"touch"
+				],
+				"note": "MISO padrão (SPI)"
+			},
+			{
+				"id": "GPIO14",
+				"caps": [
+					"gpio",
+					"adc",
+					"touch"
+				]
+			},
+			{
+				"id": "GPIO15",
+				"caps": [
+					"gpio",
+					"adc"
+				],
+				"note": "XTAL 32 kHz P"
+			},
+			{
+				"id": "GPIO16",
+				"caps": [
+					"gpio",
+					"adc"
+				],
+				"note": "XTAL 32 kHz N"
+			},
+			{
+				"id": "GPIO17",
+				"caps": [
+					"gpio",
+					"adc"
+				],
+				"note": "TX1 padrão"
+			},
+			{
+				"id": "GPIO18",
+				"caps": [
+					"gpio",
+					"adc"
+				],
+				"note": "RX1 padrão"
+			},
+			{
+				"id": "GPIO19",
+				"caps": [
+					"gpio",
+					"adc"
+				],
+				"level": "caution",
+				"why": "USB nativo (D-/D+): usar como GPIO desativa o USB"
+			},
+			{
+				"id": "GPIO20",
+				"caps": [
+					"gpio",
+					"adc"
+				],
+				"level": "caution",
+				"why": "USB nativo (D-/D+): usar como GPIO desativa o USB"
+			},
+			{
+				"id": "GPIO21",
+				"caps": [
+					"gpio"
+				]
+			},
+			{
+				"id": "GPIO35",
+				"caps": [
+					"gpio"
+				],
+				"level": "reserved",
+				"why": "PSRAM octal do módulo N16R8"
+			},
+			{
+				"id": "GPIO36",
+				"caps": [
+					"gpio"
+				],
+				"level": "reserved",
+				"why": "PSRAM octal do módulo N16R8"
+			},
+			{
+				"id": "GPIO37",
+				"caps": [
+					"gpio"
+				],
+				"level": "reserved",
+				"why": "PSRAM octal do módulo N16R8"
+			},
+			{
+				"id": "GPIO38",
+				"caps": [
+					"gpio"
+				],
+				"note": "LED da placa (varia por versão)"
+			},
+			{
+				"id": "GPIO39",
+				"caps": [
+					"gpio"
+				],
+				"note": "JTAG MTCK"
+			},
+			{
+				"id": "GPIO40",
+				"caps": [
+					"gpio"
+				],
+				"note": "JTAG MTDO"
+			},
+			{
+				"id": "GPIO41",
+				"caps": [
+					"gpio"
+				],
+				"note": "JTAG MTDI"
+			},
+			{
+				"id": "GPIO42",
+				"caps": [
+					"gpio"
+				],
+				"note": "JTAG MTMS"
+			},
+			{
+				"id": "GPIO43",
+				"caps": [
+					"gpio"
+				],
+				"level": "caution",
+				"why": "UART0: console/log e gravação serial"
+			},
+			{
+				"id": "GPIO44",
+				"caps": [
+					"gpio"
+				],
+				"level": "caution",
+				"why": "UART0: console/log e gravação serial"
+			},
+			{
+				"id": "GPIO45",
+				"caps": [
+					"gpio"
+				],
+				"level": "caution",
+				"why": "pino de strapping: define o modo de boot/JTAG na energização"
+			},
+			{
+				"id": "GPIO46",
+				"caps": [
+					"gpio"
+				],
+				"level": "caution",
+				"why": "pino de strapping: define o modo de boot/JTAG na energização"
+			},
+			{
+				"id": "GPIO47",
+				"caps": [
+					"gpio"
+				]
+			},
+			{
+				"id": "GPIO48",
+				"caps": [
+					"gpio"
+				],
+				"note": "LED RGB endereçável"
+			}
+		]
+	},
 	"specs": {
 		"soc": "ESP32-S3, Xtensa dual-core 32-bit LX7 with single precision FPU",
 		"clock": 240,

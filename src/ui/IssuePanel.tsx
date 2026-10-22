@@ -15,6 +15,8 @@ export const RULE: Record<Issue['rule'], string> = {
   topology: 'topologia',
   missing: 'falta ligar',
   pins: 'condutores',
+  address: 'endereços',
+  pinout: 'pinos',
 }
 
 export const issueKey = (i: Issue) => `${i.level}|${i.rule}|${i.message}`
