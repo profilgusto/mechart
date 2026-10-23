@@ -13,6 +13,7 @@ import {
   formatTriple,
   formatPower,
   type Flow,
+  type Level,
   type NodePower,
   type PortPower,
 } from '../model/power'
@@ -150,13 +151,20 @@ function InstanceRows({ port, instances }: { port: Port; instances: PortInstance
 /** Bullet com a corrente que passa pela porta (entra pela esquerda, sai pela direita). */
 function FlowBullet({ flow, dir }: { flow: Flow; dir: 'in' | 'out' }) {
   const w = formatPower(flow.mW, flow.partial)
+  const peak = flow.peak && flow.peak.mA > flow.mA ? flow.peak : null
   return (
     <span
       className={`prow__flow prow__flow--${dir}${flow.mA === 0 && !flow.partial ? ' prow__flow--zero' : ''}`}
       title={`${dir === 'in' ? 'corrente que entra' : 'corrente que sai'} por esta porta (nominal)${w ? ` · ${w}` : ''}\nmín / nominal / pico: ${formatTriple(flow)}`}
     >
-      {dir === 'in' ? '← ' : ''}
+      {dir === 'in' ? '→ ' : ''}
       {formatCurrent(flow.mA, flow.partial)}
+      {peak ? (
+        <>
+          {' / '}
+          <span className="prow__peak">{formatCurrent(peak.mA, peak.partial)}</span>
+        </>
+      ) : null}
       {dir === 'out' ? ' →' : ''}
     </span>
   )
@@ -165,26 +173,57 @@ function FlowBullet({ flow, dir }: { flow: Flow; dir: 'in' | 'out' }) {
 /** Rodape da visao de potencia: o que o bloco recebe e o que entrega, com o limite quando existe. */
 function PowerFooter({ power, off, onToggle }: { power: NodePower; off: boolean; onToggle: () => void }) {
   const { totalIn, totalOut } = power
-  const line = (label: string, f: Flow, limit?: number | null) => {
+  // Corrente e potencia sempre juntas, no mesmo cenario (nominal, pico, minimo).
+  const pair = (l: Level) => {
+    const w = formatPower(l.mW, l.partial)
+    return (
+      <>
+        <span className="pwfoot__a">{formatCurrent(l.mA, l.partial)}</span>
+        <span className="pwfoot__w">{w ?? '—'}</span>
+      </>
+    )
+  }
+  const line = (label: string, f: Flow, limit?: number | null, tol?: { mA: number; note?: string }) => {
     const over = limit != null && f.mA > limit
     const overPeak = !over && limit != null && (f.peak?.mA ?? 0) > limit
-    const w = formatPower(f.mW, f.partial)
-    const spread = (f.min && f.min.mA !== f.mA) || (f.peak && f.peak.mA !== f.mA)
+    const peak = f.peak && f.peak.mA > f.mA ? f.peak : null
+    const min = f.min && f.min.mA < f.mA ? f.min : null
+    const cls = over ? ' pwfoot__line--over' : overPeak ? ' pwfoot__line--peak' : ''
     return (
-      <div className={`pwfoot__line${over ? ' pwfoot__line--over' : overPeak ? ' pwfoot__line--peak' : ''}`} key={label}>
-        <span className="pwfoot__label">{label}</span>
-        <span className="pwfoot__val">
-          {formatCurrent(f.mA, f.partial)}
-          {limit != null ? <span className="pwfoot__limit"> / {formatCurrent(limit)}</span> : null}
-          {w ? <span className="pwfoot__w"> · {w}</span> : null}
-        </span>
-        {spread ? (
-          <span className="pwfoot__range" title="corrente no consumo mínimo e no pico">
-            mín {formatCurrent(f.min?.mA ?? f.mA, f.min?.partial ?? f.partial)} · pico{' '}
-            {formatCurrent(f.peak?.mA ?? f.mA, f.peak?.partial ?? f.partial)}
-            {limit != null && f.peak ? ` / ${formatCurrent(limit)}` : ''}
-          </span>
+      <div className={`pwfoot__line${cls}`} key={label}>
+        <div className="pwfoot__title">
+          <span className="pwfoot__label">{label}</span>
+          {limit != null ? (
+            <span className="pwfoot__limit" title="corrente máxima que esta saída aguenta">
+              limite {formatCurrent(limit)}
+            </span>
+          ) : null}
+        </div>
+        {tol ? (
+          <div
+            className="pwfoot__tol"
+            title="corrente de pico que a saída tolera só por instantes (datasheet); acima do limite contínuo, mas não sustentável"
+          >
+            tolera pico {formatCurrent(tol.mA)}
+            {tol.note ? ` · ${tol.note}` : ''}
+          </div>
         ) : null}
+        <div className="pwfoot__grid">
+          {peak ? (
+            <>
+              <span className="pwfoot__tag pwfoot__tag--peak">pico</span>
+              <span className="pwfoot__pk">{pair(peak)}</span>
+            </>
+          ) : null}
+          <span className="pwfoot__tag">nominal</span>
+          {pair(f)}
+          {min ? (
+            <>
+              <span className="pwfoot__tag pwfoot__tag--min">mín</span>
+              <span className="pwfoot__mn">{pair(min)}</span>
+            </>
+          ) : null}
+        </div>
       </div>
     )
   }
@@ -216,7 +255,7 @@ function PowerFooter({ power, off, onToggle }: { power: NodePower; off: boolean;
         <span className="pwfoot__dead">sem alimentação — nenhuma fonte chega aqui</span>
       ) : null}
       {totalIn ? line('recebe', totalIn) : null}
-      {totalOut ? line('fornece', totalOut, totalOut.limit) : null}
+      {totalOut ? line('fornece', totalOut, totalOut.limit, totalOut.peakLimit ? { mA: totalOut.peakLimit, note: totalOut.peakNote } : undefined) : null}
       {!totalIn && !totalOut ? <span className="pwfoot__none">sem ligação de energia</span> : null}
     </div>
   )

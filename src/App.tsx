@@ -542,7 +542,7 @@ export default function App() {
               data-tip="visão de potência — papéis, correntes e limites"
               onClick={() => setPowerView(true)}
             >
-              potência
+              A/W
             </button>
           </div>
 
@@ -767,7 +767,8 @@ export default function App() {
           active={activeIssue}
           selectedNodeIds={selectedNodeIds}
           onFocus={(issue) => {
-            setSelectedNodeIds([])
+            // Nao limpa a selecao aqui: o React Flow ainda reporta o bloco antigo e a app o
+            // reselecionaria em loop ("Maximum update depth"). O realce do aviso ja tem prioridade.
             setActiveIssue(issue)
           }}
         />

@@ -4,6 +4,9 @@
 	"description": "TB6612FNG dual DC motor driver breakout board (Toshiba TB6612FNG, SSOP24), headers pre-soldered",
 	"type": "motor-driver",
 	"category": "actuation",
+	"instance": {
+		"operatingRange": true
+	},
 	"ports": [
 		{
 			"id": "vm",
@@ -11,14 +14,14 @@
 			"kind": "power",
 			"dir": "sink",
 			"v": {
-				"min": 4.5,
+				"min": 2.5,
 				"nom": 5,
 				"max": 13.5
 			},
 			"required": true,
 			"count": 1,
 			"src": "motor-voltage",
-			"note": "máximo absoluto 15 V",
+			"note": "faixa de operação 2,5–13,5 V (datasheet); máximo absoluto 15 V. A corrente de saída plena (1,0 A) exige VM ≥ 4,5 V; abaixo disso o limite cai a 0,4 A, sem PWM",
 			"pins": [
 				{
 					"id": "VM",
@@ -57,18 +60,21 @@
 		},
 		{
 			"id": "out-a",
+			"pwm": true,
 			"label": "AO1 / AO2",
 			"kind": "power",
 			"dir": "source",
 			"v": {
-				"min": 4.5,
+				"min": 2.5,
 				"nom": 5,
 				"max": 13.5
 			},
-			"supply_mA": 1200,
+			"supply_mA": 1000,
+			"supply_peak_mA": 2000,
+			"supply_peak_note": "≤ 20 ms, duty ≤ 20%",
 			"count": 1,
-			"src": "communications.output-pins; output-current.continuous-per-channel 1,2 A",
-			"note": "a saída segue a tensão em VM. Contínua real: 1,0 A com VM ≥ 5 V e 0,4 A com 4,5 ≤ VM < 5 V; pico 3,2 A por 10 ms",
+			"src": "communications.output-pins; output-current.continuous-per-channel 1,0 A (operating range)",
+			"note": "a saída segue a tensão em VM menos a queda interna (≈0,5 V a 1 A). Contínua 1,0 A com VM ≥ 4,5 V e 0,4 A com 2,5 ≤ VM < 4,5 V (sem PWM); máximo absoluto 1,2 A. Pico 2 A por 20 ms com duty ≤ 20% e 3,2 A em pulso único de 10 ms",
 			"pins": [
 				{
 					"id": "AO1",
@@ -82,18 +88,21 @@
 		},
 		{
 			"id": "out-b",
+			"pwm": true,
 			"label": "BO1 / BO2",
 			"kind": "power",
 			"dir": "source",
 			"v": {
-				"min": 4.5,
+				"min": 2.5,
 				"nom": 5,
 				"max": 13.5
 			},
-			"supply_mA": 1200,
+			"supply_mA": 1000,
+			"supply_peak_mA": 2000,
+			"supply_peak_note": "≤ 20 ms, duty ≤ 20%",
 			"count": 1,
-			"src": "communications.output-pins; output-current.continuous-per-channel 1,2 A",
-			"note": "a saída segue a tensão em VM",
+			"src": "communications.output-pins; output-current.continuous-per-channel 1,0 A (operating range)",
+			"note": "a saída segue a tensão em VM (mesmos limites de corrente do canal A)",
 			"pins": [
 				{
 					"id": "BO1",
@@ -111,9 +120,10 @@
 			"kind": "data",
 			"dir": "in",
 			"protocol": "pwm",
+			"level_v": 3.3,
 			"count": 1,
 			"src": "communications.control-pins[0]",
-			"note": "nível alto = Vcc × 0,7; pull-down interno de 200k; PWM até 100 kHz",
+			"note": "nível alto = Vcc × 0,7; pull-down interno de 200k; PWM até 100 kHz; nível lógico acompanha VCC: alto ≥ VCC×0,7 (2,31 V com VCC = 3,3 V), baixo ≤ VCC×0,3; aceita −0,2 a 6 V na entrada",
 			"pins": [
 				{
 					"id": "PWMA",
@@ -127,6 +137,7 @@
 			"kind": "data",
 			"dir": "in",
 			"protocol": "pwm",
+			"level_v": 3.3,
 			"count": 1,
 			"src": "communications.control-pins[3]",
 			"pins": [
@@ -134,7 +145,8 @@
 					"id": "PWMB",
 					"signal": "pwm"
 				}
-			]
+			],
+			"note": "nível lógico acompanha VCC: alto ≥ VCC×0,7 (2,31 V com VCC = 3,3 V), baixo ≤ VCC×0,3; aceita −0,2 a 6 V na entrada"
 		},
 		{
 			"id": "dir-a",
@@ -142,6 +154,7 @@
 			"kind": "data",
 			"dir": "in",
 			"protocol": "gpio",
+			"level_v": 3.3,
 			"count": 2,
 			"src": "communications.control-pins[1..2]",
 			"pins": [
@@ -153,7 +166,8 @@
 					"id": "AIN2",
 					"signal": "in2"
 				}
-			]
+			],
+			"note": "nível lógico acompanha VCC: alto ≥ VCC×0,7 (2,31 V com VCC = 3,3 V), baixo ≤ VCC×0,3; aceita −0,2 a 6 V na entrada"
 		},
 		{
 			"id": "dir-b",
@@ -161,6 +175,7 @@
 			"kind": "data",
 			"dir": "in",
 			"protocol": "gpio",
+			"level_v": 3.3,
 			"count": 2,
 			"src": "communications.control-pins[4..5]",
 			"pins": [
@@ -172,7 +187,8 @@
 					"id": "BIN2",
 					"signal": "in2"
 				}
-			]
+			],
+			"note": "nível lógico acompanha VCC: alto ≥ VCC×0,7 (2,31 V com VCC = 3,3 V), baixo ≤ VCC×0,3; aceita −0,2 a 6 V na entrada"
 		},
 		{
 			"id": "stby",
@@ -180,10 +196,11 @@
 			"kind": "data",
 			"dir": "in",
 			"protocol": "gpio",
+			"level_v": 3.3,
 			"required": true,
 			"count": 1,
 			"src": "communications.control-pins[6]",
-			"note": "precisa estar alto para acionar; baixo coloca as saídas em alta impedância",
+			"note": "precisa estar alto para acionar; baixo coloca as saídas em alta impedância; nível lógico acompanha VCC: alto ≥ VCC×0,7 (2,31 V com VCC = 3,3 V), baixo ≤ VCC×0,3; aceita −0,2 a 6 V na entrada",
 			"pins": [
 				{
 					"id": "STBY",
@@ -196,10 +213,10 @@
 		"channels": 2,
 		"topology": "dual H-bridge, LD-MOS outputs",
 		"motor-voltage": {
-			"min": 4.5,
+			"min": 2.5,
 			"nominal": 5,
 			"max": 13.5,
-			"note": "operating range; pin spec allows 2.5-13.5 V, absolute maximum 15 V"
+			"note": "operating range 2.5-13.5 V (datasheet, typ. 5 V); full 1.0 A output current needs VM >= 4.5 V; absolute maximum 15 V"
 		},
 		"logic-voltage": {
 			"min": 2.7,
@@ -207,9 +224,10 @@
 			"max": 5.5
 		},
 		"output-current": {
-			"continuous-per-channel": 1.2,
+			"continuous-per-channel": 1.0,
 			"peak-per-channel": 3.2,
-			"peak-note": "3.2 A for a single 10 ms pulse; 2 A for 20 ms pulses at duty <= 20%; 1.0 A max continuous when VM >= 5 V and 0.4 A when 4.5 V <= VM < 5 V"
+			"peak-note": "3.2 A for a single 10 ms pulse; 2 A for 20 ms pulses at duty <= 20%. Continuous (operating range): 1.0 A with VM >= 4.5 V and 0.4 A with 2.5 V <= VM < 4.5 V without PWM operation; 1.2 A is the absolute maximum per channel",
+			"absolute-max-per-channel": 1.2
 		},
 		"on-resistance": 0.5,
 		"pwm-frequency": {
@@ -218,20 +236,22 @@
 		"logic-supply-current": {
 			"typical": 1.1,
 			"standby": 0.001,
-			"note": "1.1 mA typical at Vcc = 3 V, 1.5 mA at 5.5 V; under 1 uA in standby"
+			"note": "1.1 mA typical (1.8 mA max) at Vcc = 3 V, 1.5 mA typical (2.2 mA max) at 5.5 V; under 1 uA in standby",
+			"max": 1.8
 		},
 		"input-logic-levels": {
 			"high-min": "Vcc x 0.7",
 			"low-max": "Vcc x 0.3",
-			"pull-down": 200000
+			"pull-down": 200000,
+			"absolute-range": "-0.2 V to 6 V"
 		},
 		"working-temperature": {
 			"min": -20,
 			"max": 85
 		},
 		"protections": [
-			"thermal shutdown (TSD, ~175 C)",
-			"under-voltage lockout (UVLO, ~1.9 V)"
+			"thermal shutdown (TSD, ~175 C, 20 C hysteresis)",
+			"under-voltage lockout (UVLD 1.9 V, recovers at 2.2 V)"
 		],
 		"communications": {
 			"interface": "parallel digital logic, no bus protocol",
@@ -337,6 +357,39 @@
 					"mode": "standby (outputs high impedance)"
 				}
 			]
-		}
+		},
+		"absolute-maximum": {
+			"motor-supply-voltage": 15,
+			"logic-supply-voltage": 6,
+			"input-voltage": {
+				"min": -0.2,
+				"max": 6
+			},
+			"output-voltage": 15,
+			"note": "Ta = 25 C; inputs are IN1, IN2, STBY and PWM"
+		},
+		"power-dissipation": {
+			"ic-only": 0.78,
+			"pcb-50x50mm": 0.89,
+			"pcb-76.2x114.3mm": 1.36,
+			"note": "watts, Ta = 25 C; derates to 0 W at 150 C (theta j-a 160 C/W, IC only)"
+		},
+		"output-saturating-voltage": {
+			"at-1A": {
+				"typical": 0.5,
+				"max": 0.7
+			},
+			"at-0.3A": {
+				"typical": 0.15,
+				"max": 0.21
+			},
+			"note": "volts, Vcc = VM = 5 V; the output sits at VM minus this drop"
+		},
+		"regenerative-diode-vf": {
+			"typical": 1,
+			"max": 1.1,
+			"note": "volts at IF = 1 A"
+		},
+		"package": "SSOP24 (0.65 mm pitch), 0.14 g typical"
 	}
 }

@@ -56,6 +56,20 @@ export function checkVoltage(
       continue
     }
 
+    // Saida PWM: o piso de 0 V e o duty em zero (carga parada); so o pico precisa caber.
+    if (from.port.pwm) {
+      if (src.hi > dst.hi) {
+        issues.push({
+          level: 'warning',
+          rule: 'voltage',
+          message: `${where}: o pico da saída PWM (${fmt(srcV)}) passa do que a entrada aceita (${fmt(dstV)}). Reduza VM ou o máximo declarado antes de ligar a carga.`,
+          nodeIds: [from.node.id, to.node.id],
+          edgeIds: [edge.id],
+        })
+      }
+      continue
+    }
+
     if (src.lo < dst.lo || src.hi > dst.hi) {
       issues.push({
         level: 'warning',

@@ -16,7 +16,7 @@ import '@xyflow/react/dist/style.css'
 import type { Component, Issue, Library } from '../model/types'
 import type { ArchEdge, ArchNode } from '../model/graph'
 import { handleId, nodeLabel, packTotals, effectiveVoltage, resolveEdge } from '../model/graph'
-import { computePower, formatTriple } from '../model/power'
+import { computePower, formatCurrent } from '../model/power'
 import { formatRangeCompact, rangeBounds } from '../data/normalize'
 import { expandEdge, pinsOf, pinParaFio, portInstancesOf, portPin } from '../model/pins'
 import ComponentNode, { type ComponentFlowNode } from './ComponentNode'
@@ -68,7 +68,10 @@ function incomingVoltages(
     const d = effectiveVoltage(to.node, to.port)
     const dst = d && !d.unknown ? rangeBounds(d) : null
     const disjoint = Boolean(dst && (src.hi < dst.lo || src.lo > dst.hi))
-    const over = Boolean(dst && !disjoint && (src.lo < dst.lo || src.hi > dst.hi))
+    // Saida PWM: o piso de 0 V e o duty em zero; so o pico precisa caber.
+    const over = Boolean(
+      dst && !disjoint && ((!from.port.pwm && src.lo < dst.lo) || src.hi > dst.hi),
+    )
     const level: 'bad' | 'warn' | null = disjoint ? 'bad' : over ? 'warn' : null
 
     const byPort = (out[to.node.id] ??= {})
@@ -347,7 +350,17 @@ export default function Canvas({
               target: dir.to.node.id,
               sourceHandle: handleId('out', dir.from.port.id),
               targetHandle: handleId('in', dir.to.port.id),
-              label: formatTriple(flow),
+              label: (
+                <>
+                  {formatCurrent(flow.mA, flow.partial)}
+                  {flow.peak && flow.peak.mA > flow.mA ? (
+                    <>
+                      {' / '}
+                      <tspan fill="#e0a060">{formatCurrent(flow.peak.mA, flow.peak.partial)}</tspan>
+                    </>
+                  ) : null}
+                </>
+              ),
               labelStyle: { fontSize: 10, fontWeight: 700, fill: 'var(--text)' },
               labelBgStyle: { fill: 'var(--panel)', stroke: color, strokeWidth: 1.2 },
               labelBgPadding: [6, 3] as [number, number],

@@ -23,6 +23,12 @@ export type ArchNode = {
    */
   setVoltage?: number
   /**
+   * Faixa que o projeto de fato aplica na saida de um driver (o TB6612FNG segue
+   * VM, mas aceita 4,5-13,5 V): so o teto e o piso declarados, nao a faixa da ficha.
+   */
+  useMin?: number
+  useMax?: number
+  /**
    * Corrente maxima que uma fonte externa entrega, declarada na montagem. A
    * fonte de bancada nao tem datasheet no catalogo: o numero e do adapter que o
    * usuario vai ligar, entao fica na instancia e nao no arquivo do componente.
@@ -138,6 +144,10 @@ export function effectiveVoltage(node: ArchNode, port: Port): Range | null {
     return { nom: node.setVoltage, unknown: false }
   }
 
+  if (port.dir === 'source' && node.useMax != null) {
+    return { min: node.useMin ?? 0, nom: node.useMax, max: node.useMax, unknown: false, note: port.v?.note }
+  }
+
   const { series } = arrangement(node)
   if (series === 1 || !port.v) return port.v ?? null
 
@@ -169,13 +179,19 @@ export function arrangement(node: ArchNode): { series: number; parallel: number 
 export function effectiveCurrent(
   node: ArchNode,
   port: Port,
-  which: 'supply' | 'draw' | 'peak',
+  which: 'supply' | 'supplyPeak' | 'draw' | 'peak',
 ): number | null {
   // Fonte externa: a corrente e do adapter ligado, declarada na instancia.
   if (which === 'supply' && node.setCurrent != null) return node.setCurrent
 
   const raw =
-    which === 'supply' ? port.supply_mA : which === 'peak' ? port.peak_mA : port.draw_mA
+    which === 'supply'
+      ? port.supply_mA
+      : which === 'supplyPeak'
+        ? port.supply_peak_mA
+        : which === 'peak'
+          ? port.peak_mA
+          : port.draw_mA
   if (raw == null) return null
   return Number((raw * arrangement(node).parallel).toFixed(4))
 }

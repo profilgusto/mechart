@@ -229,7 +229,7 @@ function NodeConfig({
   component: Component
   onChange: (patch: Partial<ArchNode>) => void
 }) {
-  const { pack, adjustable, selectableOutput } = component.instance
+  const { pack, adjustable, selectableOutput, operatingRange } = component.instance
   const defineSaida = Boolean(adjustable || selectableOutput)
   const external = component.external
 
@@ -320,6 +320,36 @@ function NodeConfig({
           {arranjo('series', 'Em série (S)', 'multiplica a tensão')}
           {arranjo('parallel', 'Em paralelo (P)', 'multiplica capacidade e corrente')}
           <PackSummary node={node} component={component} />
+        </>
+      ) : null}
+
+      {operatingRange ? (
+        <>
+          {(['useMin', 'useMax'] as const).map((campo) => (
+            <div className="spec__row" key={campo}>
+              <label className="spec__key" htmlFor={`cfg-${campo}`}>
+                {campo === 'useMin' ? 'Saída mínima usada (V)' : 'Saída máxima usada (V)'}
+              </label>
+              <input
+                id={`cfg-${campo}`}
+                className="cfg__input cfg__input--num"
+                type="number"
+                step="0.1"
+                min={0}
+                placeholder={campo === 'useMin' ? '0' : 'faixa da ficha'}
+                value={node[campo] ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value
+                  onChange({ [campo]: v === '' ? undefined : Number(v) })
+                }}
+              />
+            </div>
+          ))}
+          <div className="spec__note">
+            A saída segue a tensão em VM e o PWM varia a média de 0 até ela. Declare a faixa que
+            você vai realmente aplicar (ex. 0–12 V) para que os motores sejam verificados contra
+            ela, e não contra os 4,5–13,5 V da ficha. Só vale com o máximo preenchido.
+          </div>
         </>
       ) : null}
 

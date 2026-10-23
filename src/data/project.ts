@@ -40,6 +40,8 @@ function asNode(raw: unknown, i: number): ArchNode | string {
   if (isNum(o.series)) node.series = o.series
   if (isNum(o.parallel)) node.parallel = o.parallel
   if (isNum(o.setVoltage)) node.setVoltage = o.setVoltage
+  if (isNum(o.useMin)) node.useMin = o.useMin
+  if (isNum(o.useMax)) node.useMax = o.useMax
   if (isNum(o.setCurrent)) node.setCurrent = o.setCurrent
   if (o.off === true) node.off = true
   return node

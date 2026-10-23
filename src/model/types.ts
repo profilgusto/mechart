@@ -73,6 +73,8 @@ export type Port = {
   dir: PortDir
   /** Portas de energia: faixa de tensao aceita (sink) ou entregue (source). */
   v?: Range | null
+  /** Saida de energia chaveada por PWM: a media varia de 0 ate `v.max`, so o pico precisa caber na carga. */
+  pwm?: boolean
   /** Portas de energia sink (ou USB device, ver `vbus`): consumo tipico em mA. */
   draw_mA?: number | null
   /** Portas de energia sink: consumo minimo (repouso, sem carga) em mA. `draw_mA` e o nominal e `peak_mA` o pico. */
@@ -81,6 +83,10 @@ export type Port = {
   peak_mA?: number | null
   /** Portas de energia source (ou USB host, ver `vbus`): corrente maxima entregue em mA. */
   supply_mA?: number | null
+  /** Portas de energia source: pico transitorio que a saida tolera acima de `supply_mA`, em mA. */
+  supply_peak_mA?: number | null
+  /** Duracao/duty em que o pico e tolerado, ex. "≤ 20 ms, duty ≤ 20%". */
+  supply_peak_note?: string
   /**
    * Portas USB: o cabo tambem carrega o 5 V. `host` fornece VBUS (`supply_mA`),
    * `device` consome dele (`draw_mA`); entra no orcamento como uma saida de energia.
@@ -156,6 +162,8 @@ export type InstanceSpec = {
   adjustable?: boolean
   /** Fonte cuja tensao de saida e fixa, escolhida na compra (o NDUB22TA). */
   selectableOutput?: boolean
+  /** Driver cuja saida segue VM: o usuario declara a faixa que de fato vai aplicar (o TB6612FNG). */
+  operatingRange?: boolean
 }
 
 import type { ComponentType } from './component-type'

@@ -74,5 +74,10 @@
 	"dead-band-width": "microseconds",
 	"wire-length": "centimeters",
 	"gear-ratio": "ratio (input turns per output turn)",
-	"measured": "volts (start-voltage, keys ending in V); amperes (currents); rad/s and rpm (speeds)"
+	"measured": "volts (start-voltage, keys ending in V); amperes (currents); rad/s and rpm (speeds)",
+	"absolute-maximum": "volts",
+	"power-dissipation": "watts",
+	"output-saturating-voltage": "volts",
+	"regenerative-diode-vf": "volts",
+	"supply-current": "milliamps"
 }

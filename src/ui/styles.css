@@ -1650,6 +1650,7 @@ body {
   line-height: 1.6;
   white-space: nowrap;
 }
+.prow__peak { color: #e0a060; font-weight: 600; } /* pico: intermitente */
 .prow__flow--zero { color: var(--muted); border-style: dashed; font-weight: 500; }
 .prow__kind--hidden { display: none; }
 
@@ -1675,18 +1676,29 @@ body {
   color: var(--cat);
   filter: brightness(0.8);
 }
-.pwfoot__line { display: flex; justify-content: space-between; gap: 8px; }
-.pwfoot__label { color: var(--muted); }
-.pwfoot__val { font-weight: 700; color: var(--text); text-align: right; }
-.pwfoot__limit, .pwfoot__w { font-weight: 400; color: var(--muted); }
-.pwfoot__line--over .pwfoot__val, .pwfoot__line--over .pwfoot__limit { color: #d14343; }
+.pwfoot__line { display: grid; gap: 1px; margin-top: 2px; }
+.pwfoot__title { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.pwfoot__label { color: var(--muted); font-weight: 600; }
+.pwfoot__limit { font-size: 9px; font-weight: 400; color: var(--muted); }
+.pwfoot__tol { padding-left: 8px; font-size: 9px; color: #e0a060; }
 .pwfoot__none { color: var(--muted); font-style: italic; }
 
-/* Mínimo e pico, numa segunda linha quando diferem do nominal. */
-.pwfoot__line { flex-wrap: wrap; }
-.pwfoot__range { flex-basis: 100%; text-align: right; font-size: 9px; color: var(--muted); }
-.pwfoot__line--peak .pwfoot__range { color: #c98a12; font-weight: 700; }
-.pwfoot__line--over .pwfoot__range { color: #d14343; }
+/* Corrente e potência do mesmo cenário lado a lado: etiqueta | corrente | potência. */
+.pwfoot__grid {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr;
+  column-gap: 10px;
+  align-items: baseline;
+  padding-left: 8px;
+}
+.pwfoot__pk, .pwfoot__mn { display: contents; }
+.pwfoot__tag { font-size: 9px; color: var(--muted); }
+.pwfoot__a { font-weight: 700; color: var(--text); text-align: right; }
+.pwfoot__w { font-weight: 400; color: var(--muted); text-align: right; }
+.pwfoot__pk .pwfoot__a, .pwfoot__pk .pwfoot__w, .pwfoot__tag--peak { color: #e0a060; }
+.pwfoot__mn .pwfoot__a, .pwfoot__mn .pwfoot__w { font-weight: 400; color: var(--muted); }
+.pwfoot__line--peak .pwfoot__pk .pwfoot__a, .pwfoot__line--peak .pwfoot__limit { color: #c98a12; }
+.pwfoot__line--over .pwfoot__grid > .pwfoot__a, .pwfoot__line--over .pwfoot__limit { color: #d14343; }
 
 /* Fonte ativa: interruptor no rodapé. Desligada (ou sem alimentação), o card esmaece. */
 .pwfoot__head { display: flex; align-items: center; justify-content: space-between; }

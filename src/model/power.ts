@@ -59,7 +59,7 @@ export type NodePower = {
   ports: Record<string, PortPower>
   totalIn: Flow | null
   /** `limit`: soma da corrente maxima das saidas em uso, quando todas a declaram. */
-  totalOut: (Flow & { limit: number | null }) | null
+  totalOut: (Flow & { limit: number | null; peakLimit?: number; peakNote?: string }) | null
 }
 
 export type PowerResult = {
@@ -318,7 +318,7 @@ function solve(lib: Library, nodes: ArchNode[], pedges: PEdge[], sc: Scenario): 
     }
   }
 
-  const limits = new Map<string, { limit: number | null; ports: Set<string> }>()
+  const limits = new Map<string, { limit: number | null; peakLimit: number; peakNote?: string; ports: Set<string> }>()
   for (const e of pedges) {
     const flow = result.edges[e.id]
     const src = result.nodes[e.from.node.id]
@@ -327,11 +327,16 @@ function solve(lib: Library, nodes: ArchNode[], pedges: PEdge[], sc: Scenario): 
       const pp = (src.ports[e.from.port.id] ??= {})
       pp.out = add(pp.out, flow)
       src.totalOut = { ...add(src.totalOut ?? undefined, flow), limit: null }
-      const l = limits.get(e.from.node.id) ?? { limit: 0, ports: new Set<string>() }
+      const l = limits.get(e.from.node.id) ?? { limit: 0, peakLimit: 0, ports: new Set<string>() }
       if (!l.ports.has(e.from.port.id)) {
         l.ports.add(e.from.port.id)
         const s = effectiveCurrent(e.from.node, e.from.port, 'supply')
         l.limit = l.limit === null || s === null ? null : l.limit + s
+        const sp = effectiveCurrent(e.from.node, e.from.port, 'supplyPeak')
+        if (sp != null) {
+          l.peakLimit += sp
+          l.peakNote ??= e.from.port.supply_peak_note
+        }
       }
       limits.set(e.from.node.id, l)
     }
@@ -343,7 +348,13 @@ function solve(lib: Library, nodes: ArchNode[], pedges: PEdge[], sc: Scenario): 
   }
   for (const [id, l] of limits) {
     const t = result.nodes[id]?.totalOut
-    if (t) t.limit = l.limit
+    if (t) {
+      t.limit = l.limit
+      if (l.peakLimit > 0) {
+        t.peakLimit = l.peakLimit
+        t.peakNote = l.peakNote
+      }
+    }
   }
 
   return result
